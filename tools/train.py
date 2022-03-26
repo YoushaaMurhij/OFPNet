@@ -20,9 +20,9 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
-from core.models.unet import UNetWithResnet50Encoder
+from core.models.unet import UNet
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
-from configs.config import config
+from configs import config
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
@@ -77,12 +77,12 @@ def main(args):
     train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, sampler=train_sampler)
     valid_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, sampler=valid_sampler)
 
-    model = UNetWithResnet50Encoder().to(device)
+    model = UNet(23,config.NUM_CLASSES).to(device)
 
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
         model.load_state_dict(checkpoint)
-    writer.add_graph(model, torch.randn(1, 384, 128, 128, requires_grad=False).to(device))
+    writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / (len(train_loader) * config.EPOCHS)) ** 0.8)

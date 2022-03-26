@@ -23,7 +23,6 @@ class WaymoOccupancyFlowDataset(Dataset):
         self.grids_dir = grids_dir
         self.waypoints_dir = waypoints_dir
         self.grid_files = [f for f in listdir(self.grids_dir) if isfile(join(self.grids_dir, f))]
-        self.waypoint_files = [f for f in listdir(self.waypoints_dir) if isfile(join(self.waypoints_dir, f))]
     
     def __len__(self):
         return len(self.grid_files)
@@ -31,10 +30,10 @@ class WaymoOccupancyFlowDataset(Dataset):
     def __getitem__(self, idx):
         # if torch.is_tensor(idx):
         #     idx = idx.tolist()
-        grid_name = os.path.join(self.grids_dir, self.grid_files[idx] + '.bin.pt')
+        grid_name = os.path.join(self.grids_dir, self.grid_files[idx])
         grid = torch.load(grid_name, map_location=self.device)
 
-        waypoint_name = os.path.join(self.waypoints_dir, self.waypoint_files[idx] + '.txt')
+        waypoint_name = os.path.join(self.waypoints_dir, self.grid_files[idx])  # both have the same name [senario id] with diffrendt directory
         waypoint = np.loadtxt(waypoint_name, dtype=int, delimiter=',')
 
         sample = {'grid': grid, 'waypoint': waypoint, 'index': idx}
