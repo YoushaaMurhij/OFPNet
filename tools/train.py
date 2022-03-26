@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from dataset import WaymoOccupancyFlowDataset
 from model import UNetWithResnet50Encoder
-from losses import GDiceLossV2
+from losses import occupancy_flow_loss
 from configs import config
 from tqdm import tqdm
 
@@ -27,7 +27,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
     parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
-    parser.add_argument("--test-only", dest="test_only", help="Only test the model", action="store_true")
     parser.add_argument("--pretrained", default="seg_head.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='/logs/train_data/', help='path where to save output models and logs')
     args = parser.parse_args()
@@ -62,17 +61,10 @@ def main(args):
 
     model = UNetWithResnet50Encoder().to(device)
 
-
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
         model.load_state_dict(checkpoint)
     writer.add_graph(model, torch.randn(1, 384, 128, 128, requires_grad=False).to(device))
-
-    if args.focal_loss:
-        criterion = FocalLoss_(gamma=2, alpha=CLASS_WEIGHTS)
-    else:
-        loss_weights = torch.FloatTensor(CLASS_WEIGHTS).to(device)
-        criterion = nn.CrossEntropyLoss(weight=loss_weights)
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / (len(train_loader) * config.EPOCHS)) ** 0.8)
@@ -84,13 +76,13 @@ def main(args):
                 tepoch.set_description(f"Epoch {epoch}")
 
                 features = data['grids']
-                labels = data['waypoints']
-                labels = labels.to(device)
+                true_waypoints = data['waypoints']
+                true_waypoints = true_waypoints.to(device)
 
                 optimizer.zero_grad()
-                outputs = model(features)
+                pred_waypoint_logits = model(features)
 
-                loss = criterion(outputs, labels)
+                loss = occupancy_flow_loss(true_waypoints, pred_waypoint_logits)
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
