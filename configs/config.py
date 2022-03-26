@@ -1,0 +1,38 @@
+
+
+
+# Data location. Please edit.
+
+# A tfrecord containing tf.Example protos as downloaded from the Waymo Open
+# Dataset (motion) webpage.
+# Replace this path with your own tfrecords.
+
+
+DATASET_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
+# TFRecord dataset.
+TRAIN_FILES = f'{DATASET_FOLDER}/tf_example/training/training_tfexample.tfrecord*'
+VAL_FILES = f'{DATASET_FOLDER}/tf_example/validation/validation_tfexample.tfrecord*'
+TEST_FILES = f'{DATASET_FOLDER}/tf_example/testing/testing_tfexample.tfrecord*'
+SAMPLE_FILES = f'{DATASET_FOLDER}/tf_example/sample/training_tfexample.tfrecord*'
+
+# Text files containing validation and test scenario IDs for this challenge.
+VAL_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/validation_scenario_ids.txt'
+TEST_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/testing_scenario_ids.txt'
+
+NUM_PRED_CHANNELS = 4
+
+BATCH_SIZE = 2
+EPOCHS = 10
+WORKERS = 6
+LR = 0.0005
+MOMENTUM = 0.8
+VAL_SPLIT= 0.2
+SEED = 44
+
+INPUT_SIZE = 384
+NUM_CLASSES = 3
+WEIGHT_DECAY= 0.005
+
+
+GRIDS_DIR = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/grids'
+WAYPOINTS_DIR = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/waypoints'
