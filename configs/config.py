@@ -36,3 +36,17 @@ WEIGHT_DECAY= 0.005
 
 GRIDS_DIR = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/grids'
 WAYPOINTS_DIR = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/waypoints'
+
+
+# num_past_steps: 10
+# num_future_steps: 80
+NUM_WAYPOINTS = 8
+# cumulative_waypoints: true
+# normalize_sdc_yaw: true
+# grid_height_cells: 256
+# grid_width_cells: 256
+# sdc_y_in_grid: 192
+# sdc_x_in_grid: 128
+# pixels_per_meter: 3.2
+# agent_points_per_side_length: 48
+# agent_points_per_side_width: 16
