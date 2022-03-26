@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from configs import config
-def occupancy_flow_loss(true_waypoints, pred_waypoint_logits):
+def Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits):
   """Loss function.
 
   Args:

@@ -66,7 +66,9 @@ def main():
     agent_points_per_side_width: 16
     """
     text_format.Parse(config_text, config)
-
+    print("Used configs:")
+    print(config)
+    print("Started Converting to numpy pkls...")
     for i in range(len(filenames)):
         inputs = next(it)
         print('processing scene #' + str(i) + ' with id: ' + inputs['scenario/id'].numpy()[0].decode("utf-8"))
@@ -84,7 +86,7 @@ def main():
 
         model_inputs = _make_model_inputs(timestep_grids, vis_grids)
 
-        with open(DATASET_PKL_FOLDER + '/grids/' + inputs['scenario/id'].numpy()[0].decode("utf-8") ,'wb') as f: 
+        with open(DATASET_PKL_FOLDER + '/grids/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
             pickle.dump(model_inputs.numpy, f)
 
         true_waypoints_dict = collections.defaultdict(dict)
@@ -103,7 +105,7 @@ def main():
         true_waypoints_dict['cyclists']['flow']= true_waypoints.cyclists.flow
         true_waypoints_dict['cyclists']['flow_origin_occupancy']= true_waypoints.cyclists.flow_origin_occupancy
 
-        with open(DATASET_PKL_FOLDER + '/waypoints/' + inputs['scenario/id'].numpy()[0].decode("utf-8"),'wb') as f: 
+        with open(DATASET_PKL_FOLDER + '/waypoints/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
             pickle.dump(true_waypoints_dict, f)
     
     print("Done Converting to numpy pkls...")

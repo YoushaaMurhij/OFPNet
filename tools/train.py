@@ -7,30 +7,48 @@
 # Description: Training script for Occupancy and Flow Prediction
 """
 import argparse
+import numpy as np
+from tqdm import tqdm
+from time import sleep
+from datetime import datetime
+from collections import defaultdict
+
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from dataset import WaymoOccupancyFlowDataset
-from model import UNetWithResnet50Encoder
-from losses import occupancy_flow_loss
-from configs import config
-from tqdm import tqdm
-
-import numpy as np
-from time import sleep
-
 from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
+
+from core.datasets.dataset import WaymoOccupancyFlowDataset
+from core.models.unet import UNetWithResnet50Encoder
+from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
+from configs.config import config
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
     parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
     parser.add_argument("--pretrained", default="seg_head.pth", help="Use pre-trained models")
-    parser.add_argument('--save_dir', default='/logs/train_data/', help='path where to save output models and logs')
+    parser.add_argument('--save_dir', default='./logs/train_data/', help='path where to save output models and logs')
     args = parser.parse_args()
     return args
+
+def get_pred_waypoint_logits(model_outputs):
+  """Slices model predictions into occupancy and flow grids."""
+  pred_waypoint_logits = defaultdict(dict)
+
+  # Slice channels into output predictions.
+  for k in range(config.NUM_WAYPOINTS):
+    index = k * config.NUM_PRED_CHANNELS
+    waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
+    pred_observed_occupancy = waypoint_channels[:, :, :, :1]
+    pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
+    pred_flow = waypoint_channels[:, :, :, 2:]
+    pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
+    pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
+    pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
+
+  return pred_waypoint_logits
 
 def main(args):
 
@@ -75,14 +93,16 @@ def main(args):
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
 
-                features = data['grids']
+                grids = data['grids']
                 true_waypoints = data['waypoints']
                 true_waypoints = true_waypoints.to(device)
 
                 optimizer.zero_grad()
-                pred_waypoint_logits = model(features)
+                model_outputs = model(grids)
+                pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
 
-                loss = occupancy_flow_loss(true_waypoints, pred_waypoint_logits)
+                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits)
+                loss = sum(loss_dict.values())
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
