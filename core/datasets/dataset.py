@@ -6,14 +6,13 @@
 -----------------------------------------------------------------------------------
 # Description: Cutsom Dataset loading script for Occupancy and Flow Prediction
 """
-
 import os
 import torch
-# from torch._C import device
-from torch.utils.data import Dataset
 import numpy as np
+import pickle as pkl
 from os import listdir
 from os.path import isfile, join
+from torch.utils.data import Dataset
 
 class WaymoOccupancyFlowDataset(Dataset):
     def __init__(self, grids_dir, waypoints_dir, device) -> None:
@@ -28,15 +27,16 @@ class WaymoOccupancyFlowDataset(Dataset):
         return len(self.grid_files)
 
     def __getitem__(self, idx):
-        # if torch.is_tensor(idx):
-        #     idx = idx.tolist()
-        grid_name = os.path.join(self.grids_dir, self.grid_files[idx])
-        grid = torch.load(grid_name, map_location=self.device)
 
-        waypoint_name = os.path.join(self.waypoints_dir, self.grid_files[idx])  # both have the same name [senario id] with diffrendt directory
-        waypoint = np.loadtxt(waypoint_name, dtype=int, delimiter=',')
+        grid_path = os.path.join(self.grids_dir, self.grid_files[idx])
+        grid_file = open(grid_path, 'rb')
+        grid = pkl.load(grid_file)
+        print(grid)
+        waypoint_path = os.path.join(self.waypoints_dir, self.grid_files[idx])  # both have the same name [senario id] with diffrendt directory
+        waypoint_file = open(waypoint_path, 'rb')
+        waypoint = pkl.load(waypoint_file)
 
-        sample = {'grid': grid, 'waypoint': waypoint, 'index': idx}
+        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx}
 
         return sample
 

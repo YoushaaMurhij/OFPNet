@@ -87,23 +87,23 @@ def main():
         model_inputs = _make_model_inputs(timestep_grids, vis_grids)
 
         with open(DATASET_PKL_FOLDER + '/grids/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
-            pickle.dump(model_inputs.numpy, f)
+            pickle.dump(model_inputs.numpy(), f)
 
         true_waypoints_dict = collections.defaultdict(dict)
-        true_waypoints_dict['vehicles']['observed_occupancy']= true_waypoints.vehicles.observed_occupancy
-        true_waypoints_dict['vehicles']['occluded_occupancy']= true_waypoints.vehicles.occluded_occupancy
-        true_waypoints_dict['vehicles']['flow']= true_waypoints.vehicles.flow
-        true_waypoints_dict['vehicles']['flow_origin_occupancy']= true_waypoints.vehicles.flow_origin_occupancy
+        true_waypoints_dict['vehicles']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
+        true_waypoints_dict['vehicles']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
+        true_waypoints_dict['vehicles']['flow']=                  [wp.numpy() for wp in true_waypoints.vehicles.flow]
+        true_waypoints_dict['vehicles']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
-        true_waypoints_dict['pedestrians']['observed_occupancy']= true_waypoints.pedestrians.observed_occupancy
-        true_waypoints_dict['pedestrians']['occluded_occupancy']= true_waypoints.pedestrians.occluded_occupancy
-        true_waypoints_dict['pedestrians']['flow']= true_waypoints.pedestrians.flow
-        true_waypoints_dict['pedestrians']['flow_origin_occupancy']= true_waypoints.pedestrians.flow_origin_occupancy
+        true_waypoints_dict['pedestrians']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.observed_occupancy]
+        true_waypoints_dict['pedestrians']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.occluded_occupancy]
+        true_waypoints_dict['pedestrians']['flow']=                  [wp.numpy() for wp in true_waypoints.pedestrians.flow]
+        true_waypoints_dict['pedestrians']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.pedestrians.flow_origin_occupancy]
 
-        true_waypoints_dict['cyclists']['observed_occupancy']= true_waypoints.cyclists.observed_occupancy
-        true_waypoints_dict['cyclists']['occluded_occupancy']= true_waypoints.cyclists.occluded_occupancy
-        true_waypoints_dict['cyclists']['flow']= true_waypoints.cyclists.flow
-        true_waypoints_dict['cyclists']['flow_origin_occupancy']= true_waypoints.cyclists.flow_origin_occupancy
+        true_waypoints_dict['cyclists']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.observed_occupancy]
+        true_waypoints_dict['cyclists']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.occluded_occupancy]
+        true_waypoints_dict['cyclists']['flow']=                  [wp.numpy() for wp in true_waypoints.cyclists.flow]
+        true_waypoints_dict['cyclists']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.cyclists.flow_origin_occupancy]
 
         with open(DATASET_PKL_FOLDER + '/waypoints/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
             pickle.dump(true_waypoints_dict, f)
