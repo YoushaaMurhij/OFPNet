@@ -1,3 +1,6 @@
+from functools import reduce
+from multiprocessing import reduction
+from tkinter.tix import Tree
 import torch
 import torch.nn.functional as F
 from configs import config
@@ -51,9 +54,9 @@ def _sigmoid_xe_loss(true_occupancy, pred_occupancy, loss_weight: float = 1000):
   # Since the mean over per-pixel cross-entropy values can get very small,
   # we compute the sum and multiply it by the loss weight before computing
   # the mean.
-  xe_sum = torch.sum(F.binary_cross_entropy_with_logits(labels=torch.flatten(true_occupancy), logits=torch.flatten(pred_occupancy)))
+  xe_sum = F.binary_cross_entropy_with_logits(input=torch.flatten(pred_occupancy), target=torch.flatten(true_occupancy), reduce=True, reduction='sum')
   # Return mean.
-  return loss_weight * xe_sum / torch.size(pred_occupancy, out_type=torch.float32)
+  return loss_weight * xe_sum / list(torch.flatten(pred_occupancy).size())[0] # torch.shape(pred_occupancy, out_type=torch.float32)   
 
 
 def _flow_loss(true_flow, pred_flow, loss_weight: float = 1):
@@ -61,13 +64,13 @@ def _flow_loss(true_flow, pred_flow, loss_weight: float = 1):
   diff = true_flow - pred_flow
   # Ignore predictions in areas where ground-truth flow is zero.
   # [batch_size, height, width, 1], [batch_size, height, width, 1]
-  true_flow_dx, true_flow_dy = torch.split(true_flow, 2, dim=-1)
+  (true_flow_dx, true_flow_dy) = torch.split(true_flow, true_flow.size(-1) // 2, dim=-1)
   # [batch_size, height, width, 1]
   flow_exists = torch.logical_or(torch.not_equal(true_flow_dx, 0.0), torch.not_equal(true_flow_dy, 0.0))
-  flow_exists = torch.cast(flow_exists, torch.float32)
+  flow_exists = flow_exists.type(torch.float32)
   diff = diff * flow_exists
   diff_norm = torch.linalg.norm(diff, ord=1, axis=-1)  # L1 norm.
-  mean_diff = torch.math.divide_no_nan(torch.sum(diff_norm), torch.sum(flow_exists) / 2)  # / 2 since (dx, dy) is counted twice.
+  mean_diff = torch.div(torch.sum(diff_norm), torch.sum(flow_exists) / 2)  # / 2 since (dx, dy) is counted twice.
   return loss_weight * mean_diff
 
 

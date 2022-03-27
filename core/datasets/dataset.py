@@ -31,14 +31,16 @@ class WaymoOccupancyFlowDataset(Dataset):
         grid_path = os.path.join(self.grids_dir, self.grid_files[idx])
         grid_file = open(grid_path, 'rb')
         grid = pkl.load(grid_file)[0]
-        
+
         grid = torch.tensor(grid).to(self.device)
         grid = torch.permute(grid, (2, 0, 1))
 
         waypoint_path = os.path.join(self.waypoints_dir, self.grid_files[idx])  # both have the same name [senario id] with diffrendt directory
         waypoint_file = open(waypoint_path, 'rb')
         waypoint = pkl.load(waypoint_file)
-
+        # waypoint = waypoint["vehicles"]
+        for key in waypoint["vehicles"].keys():
+            waypoint["vehicles"][key] = [torch.tensor(wp[0]).to(self.device) for wp in waypoint["vehicles"][key]]
 
         sample = {'grids': grid, 'waypoints': waypoint, 'index': idx}
 

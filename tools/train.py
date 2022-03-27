@@ -7,6 +7,7 @@
 # Description: Training script for Occupancy and Flow Prediction
 """
 import argparse
+from statistics import mode
 import numpy as np
 from tqdm import tqdm
 from time import sleep
@@ -34,26 +35,32 @@ def parse_args():
     return args
 
 def get_pred_waypoint_logits(model_outputs):
-  """Slices model predictions into occupancy and flow grids."""
-  pred_waypoint_logits = defaultdict(dict)
+    """Slices model predictions into occupancy and flow grids."""
 
-  # Slice channels into output predictions.
-  for k in range(config.NUM_WAYPOINTS):
-    index = k * config.NUM_PRED_CHANNELS
-    waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
-    pred_observed_occupancy = waypoint_channels[:, :, :, :1]
-    pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
-    pred_flow = waypoint_channels[:, :, :, 2:]
-    pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
-    pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
-    pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
+    pred_waypoint_logits = defaultdict(dict)
+    model_outputs = torch.permute(model_outputs, (0, 2, 3, 1))  
 
-  return pred_waypoint_logits
+    pred_waypoint_logits['vehicles']['observed_occupancy'] = []
+    pred_waypoint_logits['vehicles']['occluded_occupancy'] = []
+    pred_waypoint_logits['vehicles']['flow'] = []
+
+    # Slice channels into output predictions.
+    for k in range(config.NUM_WAYPOINTS):
+        index = k * config.NUM_PRED_CHANNELS
+        waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
+        pred_observed_occupancy = waypoint_channels[:, :, :, :1]
+        pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
+        pred_flow = waypoint_channels[:, :, :, 2:]
+        pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
+        pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
+        pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
+
+    return pred_waypoint_logits
 
 def main(args):
 
     now = datetime.now()
-    tag = "test 1"
+    tag = "train debug"
     save_str = '.' + args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S") + tag
     print("------------------------------------------")
     print("Use : tensorboard --logdir logs/train_data")
@@ -77,7 +84,7 @@ def main(args):
     train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, sampler=train_sampler)
     valid_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, sampler=valid_sampler)
 
-    model = UNet(23,config.NUM_CLASSES).to(device)
+    model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
 
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
@@ -95,13 +102,13 @@ def main(args):
 
                 grids = data['grids']
                 true_waypoints = data['waypoints']
-                true_waypoints = true_waypoints.to(device)
+                true_waypoints = true_waypoints
 
                 optimizer.zero_grad()
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
 
-                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits)
+                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) #TODO check mean over sum without weights
                 loss = sum(loss_dict.values())
                 loss.backward()
                 optimizer.step()

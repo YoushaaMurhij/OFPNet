@@ -2,8 +2,8 @@
 
 A baseline solution for Waymo Occupancy and Flow Prediction 
 
-<img src="./assets/complete_scene.gif" alt="complete_scene" width="300"/> <img src="./assets/observed_occupancy_rgb.gif" alt="observed_occupancy_rgb" width="300"/>
-<img src="./assets/occluded_occupancy_rgb.gif" alt="occluded_occupancy_rgb" width="300"/> <img src="./assets/flow_rgb.gif" alt="flow_rgb" width="300"/>
+<img src="./assets/complete_scene.gif" alt="complete_scene" align="left" width="350" /> <img src="./assets/observed_occupancy_rgb.gif" alt="observed_occupancy_rgb" align="middle" width="350"/>
+<img src="./assets/occluded_occupancy_rgb.gif" alt="occluded_occupancy_rgb" align="left" width="350"/> <img src="./assets/flow_rgb.gif" alt="flow_rgb" align="middle" width="350"/>
 
 
 ## Basic Installation
@@ -27,3 +27,4 @@ export PYTHONPATH="${PYTHONPATH}:/home/josh/workspace/Occ_Flow_Pred/"
 
 [] return filename in tf dataloader to ensure seq-training
 [] add pytorch2proto converter for online submission
+[] check the loss why to use weights 
