@@ -4,26 +4,53 @@ from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 import uuid
 import zlib
 
-from IPython.display import HTML
-import matplotlib.animation as animation
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow_graphics.image.transformer as tfg_transformer
 
-from google.protobuf import text_format
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.protos import occupancy_flow_submission_pb2
 from waymo_open_dataset.protos import scenario_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
 from waymo_open_dataset.utils import occupancy_flow_metrics
-from waymo_open_dataset.utils import occupancy_flow_renderer
-from waymo_open_dataset.utils import occupancy_flow_vis
 
 from configs import config
 import torch
 from collections import defaultdict
+
+def run_model_on_inputs(model_inputs, model):
+
+    """Preprocesses inputs and runs model on one batch."""
+
+    model_outputs = model(model_inputs)
+    pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
+
+    return pred_waypoint_logits
+
+def get_pred_waypoint_logits(model_outputs):
+
+    """Slices model predictions into occupancy and flow grids."""
+
+    pred_waypoint_logits = defaultdict(dict)
+    model_outputs = torch.permute(model_outputs, (0, 2, 3, 1))  
+
+    pred_waypoint_logits['vehicles']['observed_occupancy'] = []
+    pred_waypoint_logits['vehicles']['occluded_occupancy'] = []
+    pred_waypoint_logits['vehicles']['flow'] = []
+
+    # Slice channels into output predictions.
+    for k in range(config.NUM_WAYPOINTS):
+        index = k * config.NUM_PRED_CHANNELS
+        waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
+        pred_observed_occupancy = waypoint_channels[:, :, :, :1]
+        pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
+        pred_flow = waypoint_channels[:, :, :, 2:]
+        pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
+        pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
+        pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
+
+    return pred_waypoint_logits
 
 def make_submission_proto() -> occupancy_flow_submission_pb2.ChallengeSubmission:
 
@@ -69,45 +96,38 @@ def apply_sigmoid_to_occupancy_logits(pred_waypoint_logits):
     pred_waypoints['vehicles']['flow'] = pred_waypoint_logits['vehicles']['flow']
     return pred_waypoints
 
-def generate_predictions_for_one_test_shard(
+def generate_predictions_for_one_test_shard(inputs, model,
     submission: occupancy_flow_submission_pb2.ChallengeSubmission,
-    test_dataset: tf.data.Dataset,
-    test_scenario_ids: Sequence[str],
-    shard_message: str) -> None:
+    test_scenario_ids: Sequence[str]) -> None:
 
     """Iterate over all test examples in one shard and generate predictions."""
 
-    for i, inputs in enumerate(test_dataset):
-        if inputs['scenario/id'] in test_scenario_ids:
-            print(f'Processing test shard {shard_message}, example {i}...')
-            # Run inference.
-            pred_waypoint_logits = run_model_on_inputs(inputs=inputs, training=False)
-            pred_waypoints = apply_sigmoid_to_occupancy_logits(pred_waypoint_logits)
+    if inputs['scenario/id'] in test_scenario_ids:
+        # Run inference.
+        pred_waypoint_logits = run_model_on_inputs(inputs=inputs, model=model)
+        pred_waypoints = apply_sigmoid_to_occupancy_logits(pred_waypoint_logits)
 
-            # Make new scenario prediction message.
-            scenario_prediction = submission.scenario_predictions.add()
-            scenario_prediction.scenario_id = inputs['scenario/id'].numpy()[0]
+        # Make new scenario prediction message.
+        scenario_prediction = submission.scenario_predictions.add()
+        scenario_prediction.scenario_id = inputs['scenario/id'].numpy()[0]
 
-            # Add all waypoints.
-            _add_waypoints_to_scenario_prediction(
-                pred_waypoints=pred_waypoints,
-                scenario_prediction=scenario_prediction,
-                config=config)
+        # Add all waypoints.
+        add_waypoints_to_scenario_prediction(
+            pred_waypoints=pred_waypoints,
+            scenario_prediction=scenario_prediction,
+            config=config)
 
-def _save_submission_to_file(
+def save_submission_to_file(
     submission: occupancy_flow_submission_pb2.ChallengeSubmission,
-    test_shard_path: str) -> None:
+    tfrecord_id: str) -> None:
 
     """Save predictions for one test shard as a binary protobuf."""
 
     save_folder = os.path.join(pathlib.Path.home(),
                                 'occupancy_flow_challenge/testing')
     os.makedirs(save_folder, exist_ok=True)
-    basename = os.path.basename(test_shard_path)
-    if 'testing_tfexample.tfrecord' not in basename:
-        raise ValueError('Cannot determine file path for saving submission.')
-    submission_basename = basename.replace('testing_tfexample.tfrecord',
-                                            'occupancy_flow_submission.binproto')
+    submission_basename = 'occupancy_flow_submission.binproto-' + tfrecord_id + '-of-00150'
+
     submission_shard_file_path = os.path.join(save_folder, submission_basename)
     num_scenario_predictions = len(submission.scenario_predictions)
     print(f'Saving {num_scenario_predictions} scenario predictions to '

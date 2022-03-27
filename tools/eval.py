@@ -39,31 +39,6 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def get_pred_waypoint_logits(model_outputs):
-    """Slices model predictions into occupancy and flow grids."""
-
-    pred_waypoint_logits = defaultdict(dict)
-    model_outputs = torch.permute(model_outputs, (0, 2, 3, 1))  
-
-    pred_waypoint_logits['vehicles']['observed_occupancy'] = []
-    pred_waypoint_logits['vehicles']['occluded_occupancy'] = []
-    pred_waypoint_logits['vehicles']['flow'] = []
-
-    # Slice channels into output predictions.
-    for k in range(config.NUM_WAYPOINTS):
-        index = k * config.NUM_PRED_CHANNELS
-        waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
-        pred_observed_occupancy = waypoint_channels[:, :, :, :1]
-        pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
-        pred_flow = waypoint_channels[:, :, :, 2:]
-        pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
-        pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
-        pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
-
-    return pred_waypoint_logits
-
-
-
 def main(args):
 
     now = datetime.now()
@@ -80,37 +55,22 @@ def main(args):
         checkpoint = torch.load(args.ckpt, map_location='cpu')
         model.load_state_dict(checkpoint)
 
-    model.eval()
+    model.eval()   # testing_tfexample.tfrecord-00000-of-00150
 
     with tqdm(valid_loader, unit = "batch") as tepoch:
         for i, data in enumerate(tepoch):
-            print(f'Creating submission for test shard {test_shard_path}...')
+
             submission = make_submission_proto()
-            _generate_predictions_for_one_test_shard(
+            generate_predictions_for_one_test_shard(inputs=data['grids'], model=model,
                 submission=submission,
-                test_dataset=test_dataset,
-                test_scenario_ids=test_scenario_ids,
-                shard_message=f'{i + 1} of {len(test_shard_paths)}')
-            _save_submission_to_file(
-                submission=submission, test_shard_path=test_shard_path)
+                test_scenario_ids=test_scenario_ids)
+            save_submission_to_file(
+                submission=submission, tfrecord_id=data['tfrecord_id'])
 
             if i == 0:
                 print('Sample scenario prediction:\n')
                 print(submission.scenario_predictions[-1])
 
-            
-        with tqdm(valid_loader, unit = "batch") as tepoch:
-            for i, data in enumerate(tepoch):
-                tepoch.set_description(f"Epoch {epoch}")
-
-                grids = data['grids']
-                true_waypoints = data['waypoints']
-                true_waypoints = true_waypoints
-
-                model_outputs = model(grids)
-                pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
-               
-                sleep(0.01)
 
     print('Finished validation. Model Saved!')
 

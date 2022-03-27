@@ -95,7 +95,7 @@ def main():
                 pickle.dump(grid_dict, f)
 
             true_waypoints_dict = collections.defaultdict(dict)
-            true_waypoints_dict['scenario/id'] = ID
+
             true_waypoints_dict['vehicles']['observed_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
             true_waypoints_dict['vehicles']['occluded_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
             true_waypoints_dict['vehicles']['flow'] =                  [wp.numpy() for wp in true_waypoints.vehicles.flow]
