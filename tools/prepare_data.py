@@ -1,4 +1,5 @@
 import os
+from matplotlib.pyplot import grid
 import numpy as np
 import tensorflow as tf
 from google.protobuf import text_format
@@ -43,13 +44,9 @@ def main():
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-    filenames = tf.io.matching_files(SAMPLE_FILES)
-    dataset = tf.data.TFRecordDataset(filenames, compression_type='')
-    dataset = dataset.repeat()
-    dataset = dataset.map(occupancy_flow_data.parse_tf_example)
-    dataset = dataset.batch(1)
-    it = iter(dataset)
-
+    # filenames = tf.io.matching_files(SAMPLE_FILES)
+    filenames = tf.io.gfile.glob(SAMPLE_FILES)
+    
     config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
     config_text = """
     num_past_steps: 10
@@ -69,44 +66,53 @@ def main():
     print("Used configs:")
     print(config)
     print("Started Converting to numpy pkls...")
-    for i in range(len(filenames)):
-        inputs = next(it)
-        print('processing scene #' + str(i) + ' with id: ' + inputs['scenario/id'].numpy()[0].decode("utf-8"))
+    for i, filename in enumerate(filenames[:2]):
+        dataset = tf.data.TFRecordDataset(filename, compression_type='')
+        dataset = dataset.map(occupancy_flow_data.parse_tf_example)
+        dataset = dataset.batch(1)
+        for j, inputs in enumerate(dataset):
+            ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
+            print('processing frame #' + str(j) + ' from scene #' + str(i) + ' with id: ' + ID)
 
-        inputs = occupancy_flow_data.add_sdc_fields(inputs)
+            inputs = occupancy_flow_data.add_sdc_fields(inputs)
 
-        timestep_grids = occupancy_flow_grids.create_ground_truth_timestep_grids(
-            inputs=inputs, config=config)
+            timestep_grids = occupancy_flow_grids.create_ground_truth_timestep_grids(
+                inputs=inputs, config=config)
 
-        true_waypoints = occupancy_flow_grids.create_ground_truth_waypoint_grids(
-            timestep_grids=timestep_grids, config=config)
+            true_waypoints = occupancy_flow_grids.create_ground_truth_waypoint_grids(
+                timestep_grids=timestep_grids, config=config)
 
-        vis_grids = occupancy_flow_grids.create_ground_truth_vis_grids(
-            inputs=inputs, timestep_grids=timestep_grids, config=config)
+            vis_grids = occupancy_flow_grids.create_ground_truth_vis_grids(
+                inputs=inputs, timestep_grids=timestep_grids, config=config)
 
-        model_inputs = _make_model_inputs(timestep_grids, vis_grids)
+            model_inputs = _make_model_inputs(timestep_grids, vis_grids)
 
-        with open(DATASET_PKL_FOLDER + '/grids/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
-            pickle.dump(model_inputs.numpy(), f)
+            grid_dict = {}
+            grid_dict['scenario/id'] = ID
+            grid_dict['grid'] = model_inputs.numpy()
 
-        true_waypoints_dict = collections.defaultdict(dict)
-        true_waypoints_dict['vehicles']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
-        true_waypoints_dict['vehicles']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
-        true_waypoints_dict['vehicles']['flow']=                  [wp.numpy() for wp in true_waypoints.vehicles.flow]
-        true_waypoints_dict['vehicles']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
+            with open(DATASET_PKL_FOLDER + '/grids/' + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
+                pickle.dump(grid_dict, f)
 
-        true_waypoints_dict['pedestrians']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.observed_occupancy]
-        true_waypoints_dict['pedestrians']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.occluded_occupancy]
-        true_waypoints_dict['pedestrians']['flow']=                  [wp.numpy() for wp in true_waypoints.pedestrians.flow]
-        true_waypoints_dict['pedestrians']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.pedestrians.flow_origin_occupancy]
+            true_waypoints_dict = collections.defaultdict(dict)
+            true_waypoints_dict['scenario/id'] = ID
+            true_waypoints_dict['vehicles']['observed_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
+            true_waypoints_dict['vehicles']['occluded_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
+            true_waypoints_dict['vehicles']['flow'] =                  [wp.numpy() for wp in true_waypoints.vehicles.flow]
+            true_waypoints_dict['vehicles']['flow_origin_occupancy'] = [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
-        true_waypoints_dict['cyclists']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.observed_occupancy]
-        true_waypoints_dict['cyclists']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.occluded_occupancy]
-        true_waypoints_dict['cyclists']['flow']=                  [wp.numpy() for wp in true_waypoints.cyclists.flow]
-        true_waypoints_dict['cyclists']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.cyclists.flow_origin_occupancy]
+            # true_waypoints_dict['pedestrians']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.observed_occupancy]
+            # true_waypoints_dict['pedestrians']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.occluded_occupancy]
+            # true_waypoints_dict['pedestrians']['flow']=                  [wp.numpy() for wp in true_waypoints.pedestrians.flow]
+            # true_waypoints_dict['pedestrians']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.pedestrians.flow_origin_occupancy]
 
-        with open(DATASET_PKL_FOLDER + '/waypoints/' + inputs['scenario/id'].numpy()[0].decode("utf-8") + '.pkl','wb') as f: 
-            pickle.dump(true_waypoints_dict, f)
+            # true_waypoints_dict['cyclists']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.observed_occupancy]
+            # true_waypoints_dict['cyclists']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.occluded_occupancy]
+            # true_waypoints_dict['cyclists']['flow']=                  [wp.numpy() for wp in true_waypoints.cyclists.flow]
+            # true_waypoints_dict['cyclists']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.cyclists.flow_origin_occupancy]
+
+            with open(DATASET_PKL_FOLDER + '/waypoints/' + filename.split('-')[-3] + '_' + ID + '.pkl','wb') as f: 
+                pickle.dump(true_waypoints_dict, f)
     
     print("Done Converting to numpy pkls...")
         
