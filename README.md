@@ -2,10 +2,8 @@
 
 A baseline solution for Waymo Occupancy and Flow Prediction 
 
-<img src="./assets/complete_scene.gif" alt="complete_scene" width="250"/>
-<img src="./assets/observed_occupancy_rgb.gif" alt="observed_occupancy_rgb" width="250"/>
-<img src="./assets/occluded_occupancy_rgb.gif" alt="occluded_occupancy_rgb" width="250"/>
-<img src="./assets/flow_rgb.gif" alt="flow_rgb" width="250"/>
+<img src="./assets/complete_scene.gif" alt="complete_scene" width="300"/> <img src="./assets/observed_occupancy_rgb.gif" alt="observed_occupancy_rgb" width="300"/>
+<img src="./assets/occluded_occupancy_rgb.gif" alt="occluded_occupancy_rgb" width="300"/> <img src="./assets/flow_rgb.gif" alt="flow_rgb" width="300"/>
 
 
 ## Basic Installation
