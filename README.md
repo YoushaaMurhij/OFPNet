@@ -25,7 +25,7 @@ export PYTHONPATH="${PYTHONPATH}:/home/josh/workspace/Occ_Flow_Pred/"
 
 ## TODOs:
 
-[] return filename in tf dataloader to ensure seq-training
-[] add pytorch2proto converter for online submission
-[] check the loss why to use weights 
-[] add visualizer
+- [x] add pytorch2proto converter for online submission
+- [ ] check the loss why to use weights 
+- [ ] add visualizer
+- [ ] edd eval script
