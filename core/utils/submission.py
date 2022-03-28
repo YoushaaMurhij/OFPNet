@@ -6,14 +6,12 @@ import zlib
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_graphics.image.transformer as tfg_transformer
 
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.protos import occupancy_flow_submission_pb2
 from waymo_open_dataset.protos import scenario_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
-from waymo_open_dataset.utils import occupancy_flow_metrics
 
 from configs import config
 import torch
@@ -136,3 +134,25 @@ def save_submission_to_file(
     f.write(submission.SerializeToString())
     f.close()
 
+def make_model_inputs(
+    timestep_grids: occupancy_flow_grids.TimestepGrids,
+    vis_grids: occupancy_flow_grids.VisGrids,
+    ) -> tf.Tensor:
+
+    """Concatenates all occupancy grids over past, current to a single tensor."""
+
+    model_inputs = tf.concat(
+        [
+            vis_grids.roadgraph,
+            timestep_grids.vehicles.past_occupancy,
+            timestep_grids.vehicles.current_occupancy,
+            tf.clip_by_value(
+                timestep_grids.pedestrians.past_occupancy +
+                timestep_grids.cyclists.past_occupancy, 0, 1),
+            tf.clip_by_value(
+                timestep_grids.pedestrians.current_occupancy +
+                timestep_grids.cyclists.current_occupancy, 0, 1),
+        ],
+        axis=-1,
+    )
+    return model_inputs

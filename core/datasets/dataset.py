@@ -6,47 +6,65 @@
 -----------------------------------------------------------------------------------
 # Description: Cutsom Dataset loading script for Occupancy and Flow Prediction
 """
-import os
 import torch
-import numpy as np
-import pickle as pkl
-from os import listdir
-from os.path import isfile, join
 from torch.utils.data import Dataset
+from collections import defaultdict
+from core.utils.submission import make_model_inputs
+
+import tensorflow as tf
+from google.protobuf import text_format
+from waymo_open_dataset.utils import occupancy_flow_data
+from waymo_open_dataset.utils import occupancy_flow_grids
+from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 
 class WaymoOccupancyFlowDataset(Dataset):
-    def __init__(self, grids_dir, waypoints_dir, device) -> None:
+    def __init__(self, FILES, device) -> None:
         super().__init__()
         
         self.device = device
-        self.grids_dir = grids_dir
-        self.waypoints_dir = waypoints_dir
-        self.grid_files = [f for f in listdir(self.grids_dir) if isfile(join(self.grids_dir, f))]
+        self.counter = 0
+        filenames = tf.io.matching_files(FILES)
+        dataset = tf.data.TFRecordDataset(filenames, compression_type='')
+        dataset = dataset.map(occupancy_flow_data.parse_tf_example)
+        dataset = dataset.batch(1)
+        self.it = iter(dataset)
+
+        self.config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
+        text_format.Parse(open('./configs/config.txt').read(), self.config)
+        print("------------------------------------------")
+        print("Occupency and Flow Prediction Parameters")
+        print("------------------------------------------")
+        print(self.config)
     
     def __len__(self):
-        return len(self.grid_files)
+        return 2424   # TODO WTF I nned to calc it 
 
     def __getitem__(self, idx):
 
-        grid_path = os.path.join(self.grids_dir, self.grid_files[idx])
-        grid_file = open(grid_path, 'rb')
-        print(grid_file)
-        tfrecord_id = grid_file.split('_')[0]
-        grid = pkl.load(grid_file)
-        ID = grid['scenario/id']
-        grid = grid['grid'][0]
+        inputs = next(self.it)
 
-        grid = torch.tensor(grid).to(self.device)
+        ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
+        inputs = occupancy_flow_data.add_sdc_fields(inputs)
+
+        timestep_grids = occupancy_flow_grids.create_ground_truth_timestep_grids(inputs=inputs, config=self.config)
+        true_waypoints = occupancy_flow_grids.create_ground_truth_waypoint_grids(timestep_grids=timestep_grids, config=self.config)
+        vis_grids      = occupancy_flow_grids.create_ground_truth_vis_grids(inputs=inputs, timestep_grids=timestep_grids, config=self.config)
+
+        model_inputs = make_model_inputs(timestep_grids, vis_grids).numpy()
+
+        grid = torch.tensor(model_inputs[0]).to(self.device)
         grid = torch.permute(grid, (2, 0, 1))
 
-        waypoint_path = os.path.join(self.waypoints_dir, self.grid_files[idx])  # both have the same name [senario id] with diffrendt directory
-        waypoint_file = open(waypoint_path, 'rb')
-        waypoint = pkl.load(waypoint_file)
-        # waypoint = waypoint["vehicles"]
+        waypoint = defaultdict(dict)
+        waypoint['vehicles']['observed_occupancy']    = [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
+        waypoint['vehicles']['occluded_occupancy']    = [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
+        waypoint['vehicles']['flow']                  = [wp.numpy() for wp in true_waypoints.vehicles.flow]
+        waypoint['vehicles']['flow_origin_occupancy'] = [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
+
         for key in waypoint["vehicles"].keys():
             waypoint["vehicles"][key] = [torch.tensor(wp[0]).to(self.device) for wp in waypoint["vehicles"][key]]
 
-        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx, 'scenario/id': ID, 'tfrecord_id': tfrecord_id}
+        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx, 'scenario/id': ID}
 
         return sample
 

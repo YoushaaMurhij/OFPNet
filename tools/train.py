@@ -6,6 +6,7 @@
 -----------------------------------------------------------------------------------
 # Description: Training script for Occupancy and Flow Prediction
 """
+import os
 import argparse
 import numpy as np
 from tqdm import tqdm
@@ -22,6 +23,8 @@ from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet import UNet
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from configs import config
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
@@ -59,7 +62,7 @@ def main(args):
 
     now = datetime.now()
     tag = "train debug"
-    save_str = '.' + args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S") + tag
+    save_str = args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S") + tag
     print("------------------------------------------")
     print("Use : tensorboard --logdir logs/train_data")
     print("------------------------------------------")
@@ -69,7 +72,7 @@ def main(args):
     device = torch.device(args.device)
     print(f'cuda device is: {device}')
 
-    dataset = WaymoOccupancyFlowDataset(grids_dir=config.GRIDS_DIR, waypoints_dir=config.WAYPOINTS_DIR, device=device) 
+    dataset = WaymoOccupancyFlowDataset(FILES=config.SAMPLE_FILES, device=device) 
     train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE)
 
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
@@ -80,10 +83,9 @@ def main(args):
     writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / (len(train_loader) * config.EPOCHS)) ** 0.8)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / len(train_loader) * config.EPOCHS) ** 0.8)
     model.train()
     for epoch in range(config.EPOCHS):
-            
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
@@ -106,9 +108,6 @@ def main(args):
                 writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + i)
                 writer.add_scalar('Learning rate', scheduler.get_last_lr()[0], epoch * len(train_loader) + i) #optimizer.param_groups[0]['lr']
                 sleep(0.01)
-
-        # writer.add_scalar(f'accuracy', confmat.acc_global, epoch)
-        # writer.add_scalar(f'mean_IoU', confmat.mean_IoU, epoch)
 
         PATH = save_str +'/Epoch_'+str(epoch)+'.pth'
         torch.save(model.state_dict(), PATH)
