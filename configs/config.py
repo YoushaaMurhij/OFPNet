@@ -1,5 +1,6 @@
 # Data location. Please edit.
-DATASET_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
+# DATASET_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
+DATASET_FOLDER = '/home/docker_occupancy_flow/workspace/Occ_Flow_Pred/data/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
 
 # TFRecord dataset.
 TRAIN_FILES  = f'{DATASET_FOLDER}/tf_example/training/training_tfexample.tfrecord*'
@@ -10,10 +11,6 @@ SAMPLE_FILES = f'{DATASET_FOLDER}/tf_example/sample/training_tfexample.tfrecord*
 # Text files containing validation and test scenario IDs for this challenge.
 VAL_SCENARIO_IDS_FILE  = f'{DATASET_FOLDER}/occupancy_flow_challenge/validation_scenario_ids.txt'
 TEST_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/testing_scenario_ids.txt'
-
-# PKLS dataset
-GRIDS_DIR     = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/grids'
-WAYPOINTS_DIR = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample/waypoints'
 
 NUM_PRED_CHANNELS = 4
 
