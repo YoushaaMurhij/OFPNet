@@ -47,15 +47,15 @@ def main(args):
     device = torch.device(args.device)
     print(f'cuda device is: {device}')
 
-    dataset = WaymoOccupancyFlowDataset(grids_dir=config.GRIDS_DIR, waypoints_dir=config.WAYPOINTS_DIR, device=device) 
-    valid_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE)
+    dataset = WaymoOccupancyFlowDataset(FILES=config.SAMPLE_FILES, device=device)
+    valid_loader = DataLoader(dataset, batch_size=config.VAL_BATCH_SIZE)
 
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
     if args.ckpt:
         checkpoint = torch.load(args.ckpt, map_location='cpu')
         model.load_state_dict(checkpoint)
 
-    model.eval()   # testing_tfexample.tfrecord-00000-of-00150
+    model.eval()
 
     with tqdm(valid_loader, unit = "batch") as tepoch:
         for i, data in enumerate(tepoch):

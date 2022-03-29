@@ -73,7 +73,7 @@ def main(args):
     print(f'cuda device is: {device}')
 
     dataset = WaymoOccupancyFlowDataset(FILES=config.SAMPLE_FILES, device=device) 
-    train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE)
+    train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
 
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
 
@@ -83,7 +83,9 @@ def main(args):
     writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / len(train_loader) * config.EPOCHS) ** 0.8)
+    # scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / len(train_loader) * config.EPOCHS) ** 0.8)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
     model.train()
     for epoch in range(config.EPOCHS):
         with tqdm(train_loader, unit = "batch") as tepoch:
@@ -106,7 +108,8 @@ def main(args):
 
                 tepoch.set_postfix(loss=loss.item())
                 writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + i)
-                writer.add_scalar('Learning rate', scheduler.get_last_lr()[0], epoch * len(train_loader) + i) #optimizer.param_groups[0]['lr']
+                # print('Learning rate', optimizer.param_groups[0]['lr'])
+                writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], epoch * len(train_loader) + i) # scheduler.get_last_lr()[0] optimizer.param_groups[0]['lr']
                 sleep(0.01)
 
         PATH = save_str +'/Epoch_'+str(epoch)+'.pth'

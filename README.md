@@ -26,6 +26,7 @@ export PYTHONPATH="${PYTHONPATH}:/home/josh/workspace/Occ_Flow_Pred/"
 ## TODOs:
 
 - [x] add pytorch2proto converter for online submission
-- [ ] check the loss why to use weights 
+- [x] check the loss why to use weights 
 - [ ] add visualizer
 - [ ] edd eval script
+- [ ] fix epoch bug during training (needs to rest dataloader itertor)
