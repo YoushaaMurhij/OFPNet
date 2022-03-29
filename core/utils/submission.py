@@ -143,12 +143,12 @@ def save_submission_to_file(
     """Save predictions for one test shard as a binary protobuf."""
 
     save_folder = os.path.join(pathlib.Path.home(),
-                                'occupancy_flow_challenge/testing')
+                                'occupancy_flow_challenge/validation')
     os.makedirs(save_folder, exist_ok=True)
     basename = os.path.basename(test_shard_path)
-    if 'testing_tfexample.tfrecord' not in basename:
+    if 'validation_tfexample.tfrecord' not in basename:
         raise ValueError('Cannot determine file path for saving submission.')
-    submission_basename = basename.replace('testing_tfexample.tfrecord',
+    submission_basename = basename.replace('validation_tfexample.tfrecord',
                                             'occupancy_flow_submission.binproto')
     submission_shard_file_path = os.path.join(save_folder, submission_basename)
     num_scenario_predictions = len(submission.scenario_predictions)
