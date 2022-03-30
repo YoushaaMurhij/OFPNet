@@ -35,7 +35,7 @@ INPUT_SIZE       = 23
 NUM_CLASSES      = 32
 
 WEIGHT_DECAY     = 0.005
-EPOCHS           = 1
+EPOCHS           = 5
 WORKERS          = 12
 LR               = 0.005
 MOMENTUM         = 0.8

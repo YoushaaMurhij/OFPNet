@@ -31,7 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
     parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
-    parser.add_argument("--pretrained", default="seg_head.pth", help="Use pre-trained models")
+    parser.add_argument("--pretrained", default="./logs/Epoch_0.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='./logs/train_data/', help='path where to save output models and logs')
     args = parser.parse_args()
     return args
@@ -50,21 +50,21 @@ def main(args):
     device = torch.device(args.device)
     print(f'cuda device is: {device}')
 
-    dataset = WaymoOccupancyFlowDataset(FILES=config.TEST_FILES) 
-    train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
-
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
 
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
         model.load_state_dict(checkpoint)
+        print(f'Weights are loaded from: {args.pretrained}.')
     writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
+    
     model.train()
     for epoch in range(config.EPOCHS):
+        dataset = WaymoOccupancyFlowDataset(FILES=config.TEST_FILES) 
+        train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
@@ -78,7 +78,7 @@ def main(args):
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
 
-                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) #TODO check mean over sum without weights
+                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
                 loss = sum(loss_dict.values())
                 loss.backward()
                 optimizer.step()
@@ -86,7 +86,7 @@ def main(args):
 
                 tepoch.set_postfix(loss=loss.item())
                 writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + i)
-                writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], epoch * len(train_loader) + i) # scheduler.get_last_lr()[0] optimizer.param_groups[0]['lr']
+                writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], epoch * len(train_loader) + i) # scheduler.get_last_lr()[0] 
                 sleep(0.01)
 
         PATH = save_str +'/Epoch_'+str(epoch)+'.pth'

@@ -37,7 +37,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         print(self.config)
     
     def __len__(self):
-        return 450000  # TODO WTF I need to calc it 
+        return 44920  # TODO WTF I need to calc it  44920
 
     def __getitem__(self, idx):
 

@@ -49,7 +49,7 @@ def make_submission_proto() -> occupancy_flow_submission_pb2.ChallengeSubmission
 
     submission = occupancy_flow_submission_pb2.ChallengeSubmission()
     submission.account_name = 'yosha.morheg@phystech.edu'
-    submission.unique_method_name = 'Occupancy to the moon'
+    submission.unique_method_name = 'Occupancy UNet'
     submission.authors.extend(['Youshaa Murhij', 'Dmitry Yudin'])
     submission.description = 'Encoder-Decoder based prediction'
     submission.method_link = 'https://github.com/YoushaaMurhij/Occ_Flow_Pred'
