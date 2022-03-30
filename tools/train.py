@@ -29,7 +29,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument('--device', default='cuda', help='device')
+    parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
     parser.add_argument("--pretrained", default="seg_head.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='./logs/train_data/', help='path where to save output models and logs')
@@ -39,7 +39,7 @@ def parse_args():
 def main(args):
 
     now = datetime.now()
-    tag = "train debug"
+    tag = "train all scenes - unet"
     save_str = args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S") + tag
     print("------------------------------------------")
     print("Use : tensorboard --logdir logs/train_data")
@@ -50,7 +50,7 @@ def main(args):
     device = torch.device(args.device)
     print(f'cuda device is: {device}')
 
-    dataset = WaymoOccupancyFlowDataset(FILES=config.SAMPLE_FILES, device=device) 
+    dataset = WaymoOccupancyFlowDataset(FILES=config.TEST_FILES) 
     train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
 
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(device)
@@ -68,10 +68,12 @@ def main(args):
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
-                grids = data['grids']
+                grids = data['grids'].to(device)
+
                 true_waypoints = data['waypoints']
-                true_waypoints = true_waypoints
-                
+                for key in true_waypoints["vehicles"].keys():
+                    true_waypoints["vehicles"][key] = [torch.tensor(wp[0]).to(device) for wp in true_waypoints["vehicles"][key]]
+            
                 optimizer.zero_grad()
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)

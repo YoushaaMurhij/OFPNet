@@ -45,7 +45,7 @@ def main(args):
     tag = "val debug"
     save_str = '.' + args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S") + tag
     device = torch.device(args.device)
-    print(f'cuda device is: {device}')
+  
 
     dataset = WaymoOccupancyFlowDataset(FILES=config.SAMPLE_FILES, device=device)
     valid_loader = DataLoader(dataset, batch_size=config.VAL_BATCH_SIZE)

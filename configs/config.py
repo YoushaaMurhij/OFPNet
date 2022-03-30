@@ -28,7 +28,7 @@ NUM_WAYPOINTS = 8
 # agent_points_per_side_width: 16
 
 # Train configs
-TRAIN_BATCH_SIZE = 2
+TRAIN_BATCH_SIZE = 1
 VAL_BATCH_SIZE   = 1
 
 INPUT_SIZE       = 23

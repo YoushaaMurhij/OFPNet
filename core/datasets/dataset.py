@@ -19,10 +19,9 @@ from waymo_open_dataset.utils import occupancy_flow_grids
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 
 class WaymoOccupancyFlowDataset(Dataset):
-    def __init__(self, FILES, device) -> None:
+    def __init__(self, FILES) -> None:
         super().__init__()
         
-        self.device = device
         filenames = tf.io.matching_files(FILES)
         dataset = tf.data.TFRecordDataset(filenames, compression_type='')
         dataset = dataset.map(occupancy_flow_data.parse_tf_example)
@@ -38,7 +37,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         print(self.config)
     
     def __len__(self):
-        return 2424  # TODO WTF I nned to calc it 
+        return 450000  # TODO WTF I need to calc it 
 
     def __getitem__(self, idx):
 
@@ -53,7 +52,7 @@ class WaymoOccupancyFlowDataset(Dataset):
 
         model_inputs = make_model_inputs(timestep_grids, vis_grids).numpy()
 
-        grid = torch.tensor(model_inputs[0]).to(self.device)
+        grid = torch.tensor(model_inputs[0])
         grid = torch.permute(grid, (2, 0, 1))
 
         waypoint = defaultdict(dict)
@@ -62,8 +61,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         waypoint['vehicles']['flow']                  = [wp.numpy() for wp in true_waypoints.vehicles.flow]
         waypoint['vehicles']['flow_origin_occupancy'] = [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
-        for key in waypoint["vehicles"].keys():
-            waypoint["vehicles"][key] = [torch.tensor(wp[0]).to(self.device) for wp in waypoint["vehicles"][key]]
+        
 
         sample = {'grids': grid, 'waypoints': waypoint, 'index': idx, 'scenario/id': ID}
 
