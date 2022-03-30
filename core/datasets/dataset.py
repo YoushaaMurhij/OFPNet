@@ -9,7 +9,8 @@
 import torch
 from torch.utils.data import Dataset
 from collections import defaultdict
-from core.utils.submission import make_model_inputs
+from core.utils.io import make_model_inputs
+from configs import config
 
 import tensorflow as tf
 from google.protobuf import text_format
@@ -22,22 +23,22 @@ class WaymoOccupancyFlowDataset(Dataset):
         super().__init__()
         
         self.device = device
-        self.counter = 0
         filenames = tf.io.matching_files(FILES)
         dataset = tf.data.TFRecordDataset(filenames, compression_type='')
         dataset = dataset.map(occupancy_flow_data.parse_tf_example)
         dataset = dataset.batch(1)
+    
         self.it = iter(dataset)
-
         self.config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
         text_format.Parse(open('./configs/config.txt').read(), self.config)
+
         print("------------------------------------------")
         print("Occupency and Flow Prediction Parameters")
         print("------------------------------------------")
         print(self.config)
     
     def __len__(self):
-        return 2424   # TODO WTF I nned to calc it 
+        return 2424  # TODO WTF I nned to calc it 
 
     def __getitem__(self, idx):
 

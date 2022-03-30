@@ -1,6 +1,6 @@
 # Data location. Please edit.
 # DATASET_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
-DATASET_FOLDER = '/home/docker_occupancy_flow/workspace/Occ_Flow_Pred/data/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
+DATASET_FOLDER = '/home/workspace/Occ_Flow_Pred/data/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
 
 # TFRecord dataset.
 TRAIN_FILES  = f'{DATASET_FOLDER}/tf_example/training/training_tfexample.tfrecord*'
@@ -29,12 +29,13 @@ NUM_WAYPOINTS = 8
 
 # Train configs
 TRAIN_BATCH_SIZE = 2
-VAL_BATCH_SIZE   = 2
+VAL_BATCH_SIZE   = 1
+
 INPUT_SIZE       = 23
 NUM_CLASSES      = 32
+
 WEIGHT_DECAY     = 0.005
-EPOCHS           = 4
-WORKERS          = 6
+EPOCHS           = 1
+WORKERS          = 12
 LR               = 0.005
 MOMENTUM         = 0.8
-SEED             = 44

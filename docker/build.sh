@@ -2,4 +2,4 @@
 
 docker build . \
              -f Dockerfile \
-             -t x64/occupancy_flow:latest 
+             -t x64/ofp:latest 

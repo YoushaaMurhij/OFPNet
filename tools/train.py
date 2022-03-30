@@ -22,41 +22,19 @@ from torch.utils.tensorboard import SummaryWriter
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet import UNet
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
+from core.utils.io import get_pred_waypoint_logits
 from configs import config
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument('--device', default='cuda:0', help='device')
+    parser.add_argument('--device', default='cuda', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
     parser.add_argument("--pretrained", default="seg_head.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='./logs/train_data/', help='path where to save output models and logs')
     args = parser.parse_args()
     return args
-
-def get_pred_waypoint_logits(model_outputs):
-    """Slices model predictions into occupancy and flow grids."""
-
-    pred_waypoint_logits = defaultdict(dict)
-    model_outputs = torch.permute(model_outputs, (0, 2, 3, 1))  
-
-    pred_waypoint_logits['vehicles']['observed_occupancy'] = []
-    pred_waypoint_logits['vehicles']['occluded_occupancy'] = []
-    pred_waypoint_logits['vehicles']['flow'] = []
-
-    # Slice channels into output predictions.
-    for k in range(config.NUM_WAYPOINTS):
-        index = k * config.NUM_PRED_CHANNELS
-        waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
-        pred_observed_occupancy = waypoint_channels[:, :, :, :1]
-        pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
-        pred_flow = waypoint_channels[:, :, :, 2:]
-        pred_waypoint_logits['vehicles']['observed_occupancy'].append(pred_observed_occupancy)
-        pred_waypoint_logits['vehicles']['occluded_occupancy'].append(pred_occluded_occupancy)
-        pred_waypoint_logits['vehicles']['flow'].append(pred_flow)
-
-    return pred_waypoint_logits
 
 def main(args):
 
@@ -83,7 +61,6 @@ def main(args):
     writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-    # scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: (1 - x / len(train_loader) * config.EPOCHS) ** 0.8)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
     model.train()
@@ -91,11 +68,10 @@ def main(args):
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
-
                 grids = data['grids']
                 true_waypoints = data['waypoints']
                 true_waypoints = true_waypoints
-
+                
                 optimizer.zero_grad()
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
@@ -108,7 +84,6 @@ def main(args):
 
                 tepoch.set_postfix(loss=loss.item())
                 writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + i)
-                # print('Learning rate', optimizer.param_groups[0]['lr'])
                 writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], epoch * len(train_loader) + i) # scheduler.get_last_lr()[0] optimizer.param_groups[0]['lr']
                 sleep(0.01)
 

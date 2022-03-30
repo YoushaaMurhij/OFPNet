@@ -8,25 +8,32 @@ A baseline solution for Waymo Occupancy and Flow Prediction
 
 ## Basic Installation
 
-# basic python libraries
+# Docker container:
+Using nvidia-docker with cuda-11.3, Pytorch  
+```bash
+cd path/to/workspace
+git clone https://github.com/YoushaaMurhij/Occ_Flow_Pred.git
+cd Occ_Flow_Pred/docker
+./build.sh
+cd ..
+./docker/start.sh
+./docker/into.sh
+
+```
+# Conda environment:
 ```bash
 conda create --name occ_flow 
 conda activate occ_flow
 conda install pytorch torchvision cudatoolkit=11.3 -c pytorch
-https://github.com/YoushaaMurhij/Occ_Flow_Pred.git
+git clone https://github.com/YoushaaMurhij/Occ_Flow_Pred.git
 cd Occ_Flow_Pred
 pip install -r requirements.txt
 
 # add Occ_Flow_Pred to PYTHONPATH by adding the following line to ~/.bashrc (change the path accordingly)
-export PYTHONPATH="${PYTHONPATH}:/home/josh/workspace/Occ_Flow_Pred/"
+export PYTHONPATH="${PYTHONPATH}:/path/to/Occ_Flow_Pred/"
 ```
 
-
-
 ## TODOs:
-
-- [x] add pytorch2proto converter for online submission
-- [x] check the loss why to use weights 
 - [ ] add visualizer
-- [ ] edd eval script
+- [ ] add eval script
 - [ ] fix epoch bug during training (needs to rest dataloader itertor)
