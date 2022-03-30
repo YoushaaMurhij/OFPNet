@@ -51,7 +51,7 @@ def _sigmoid_xe_loss(true_occupancy, pred_occupancy, loss_weight: float = 1000):
     # Since the mean over per-pixel cross-entropy values can get very small,
     # we compute the sum and multiply it by the loss weight before computing
     # the mean.
-    xe_sum = F.binary_cross_entropy_with_logits(input=torch.flatten(pred_occupancy), target=torch.flatten(true_occupancy), reduce=True, reduction='mean')
+    xe_sum = F.binary_cross_entropy_with_logits(input=torch.flatten(pred_occupancy), target=torch.flatten(true_occupancy), reduction='mean')
     # Return mean.
     return xe_sum #loss_weight * xe_sum / list(torch.flatten(pred_occupancy).size())[0] # torch.shape(pred_occupancy, out_type=torch.float32)   
 
