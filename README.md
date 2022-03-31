@@ -36,4 +36,4 @@ export PYTHONPATH="${PYTHONPATH}:/path/to/Occ_Flow_Pred/"
 ## TODOs:
 - [ ] add visualizer
 - [ ] add eval script
-- [ ] fix epoch bug during training (needs to rest dataloader itertor)
+- [ ] add wandb

@@ -18,7 +18,7 @@ from core.utils.io import make_model_inputs, get_pred_waypoint_logits
 from configs import config    #TODO remove it and replace it with challenge configs
 
 DEVICE = 'cuda:0'
-PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/train_data/Epoch_0.pth"
+PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/Epoch_4.pth"
 
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
@@ -121,7 +121,7 @@ def save_submission_to_file(
 
     """Save predictions for one test shard as a binary protobuf."""
 
-    save_folder = os.path.join(pathlib.Path.home(),
+    save_folder = os.path.join(config.DATASET_FOLDER,
                                 'occupancy_flow_challenge/validation')
     os.makedirs(save_folder, exist_ok=True)
     basename = os.path.basename(test_shard_path)

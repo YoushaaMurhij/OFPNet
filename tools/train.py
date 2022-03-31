@@ -31,7 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
     parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
-    parser.add_argument("--pretrained", default="./logs/Epoch_1.pth", help="Use pre-trained models")
+    parser.add_argument("--pretrained", default="./logs/Epoch_4.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='./logs/train_data/', help='path where to save output models and logs')
     args = parser.parse_args()
     return args
@@ -39,8 +39,8 @@ def parse_args():
 def main(args):
 
     now = datetime.now()
-    tag = "train_unet_5ep"
-    save_str = args.save_dir + now.strftime("%d-%m-%Y-%H:%M:%S-") + tag
+    tag = "train_unet_15ep"
+    save_str = args.save_dir + now.strftime("%d-%m-%Y-%H-%M-%S-") + tag
     print("------------------------------------------")
     print("Use : tensorboard --logdir logs/train_data")
     print("------------------------------------------")

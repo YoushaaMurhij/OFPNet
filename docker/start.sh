@@ -9,7 +9,7 @@ if [ "$(docker ps -aq -f status=exited -f name=ofp)" ]; then
 fi
 
 docker run -it -d --rm \
-    --gpus '"device=0,1"' \
+    --gpus '"device=0"' \
     --net host \
     -e "NVIDIA_DRIVER_CAPABILITIES=all" \
     -e "DISPLAY" \
