@@ -43,7 +43,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         print(self.config)
     
     def __len__(self):
-        return 44920 
+        return 487002 # for training || 44920 for testing  
 
     def __getitem__(self, idx):
 

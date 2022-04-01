@@ -8,6 +8,8 @@ VAL_FILES    = f'{DATASET_FOLDER}/tf_example/validation/validation_tfexample.tfr
 TEST_FILES   = f'{DATASET_FOLDER}/tf_example/testing/testing_tfexample.tfrecord*'
 SAMPLE_FILES = f'{DATASET_FOLDER}/tf_example/sample/training_tfexample.tfrecord*'
 
+DATASET_PKL_FOLDER =  f'{DATASET_FOLDER}/pkl_example/training/'
+
 # Text files containing validation and test scenario IDs for this challenge.
 VAL_SCENARIO_IDS_FILE  = f'{DATASET_FOLDER}/occupancy_flow_challenge/validation_scenario_ids.txt'
 TEST_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/testing_scenario_ids.txt'
