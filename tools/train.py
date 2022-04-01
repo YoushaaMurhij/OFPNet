@@ -17,14 +17,15 @@ from collections import defaultdict
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet import UNet
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import config
+import wandb
 
+wandb.init(project="occupancy-flow", entity="youshaamurhij")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
@@ -41,11 +42,6 @@ def main(args):
     now = datetime.now()
     tag = "train_unet_15ep"
     save_str = args.save_dir + now.strftime("%d-%m-%Y-%H-%M-%S-") + tag
-    print("------------------------------------------")
-    print("Use : tensorboard --logdir logs/train_data")
-    print("------------------------------------------")
-
-    writer = SummaryWriter(save_str)
 
     device = torch.device(args.device)
     print(f'cuda device is: {device}')
@@ -56,7 +52,6 @@ def main(args):
         checkpoint = torch.load(args.pretrained, map_location='cpu')
         model.load_state_dict(checkpoint)
         print(f'Weights are loaded from: {args.pretrained}.')
-    writer.add_graph(model, torch.randn(1, 23, 256, 256, requires_grad=False).to(device))
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
     
@@ -85,14 +80,12 @@ def main(args):
                 scheduler.step()
 
                 tepoch.set_postfix(loss=loss.item())
-                writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + i)
-                writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], epoch * len(train_loader) + i) # scheduler.get_last_lr()[0] 
-                sleep(0.01)
+                wandb.log({"loss": loss.item()})
+                wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
 
         PATH = save_str +'/Epoch_'+str(epoch)+'.pth'
         torch.save(model.state_dict(), PATH)
     print('Finished Training. Model Saved!')
-    writer.close()
 
 if __name__=="__main__":
     args = parse_args()
