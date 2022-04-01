@@ -6,6 +6,7 @@
 -----------------------------------------------------------------------------------
 # Description: Cutsom Dataset loading script for Occupancy and Flow Prediction
 """
+import os
 import torch
 from torch.utils.data import Dataset
 from collections import defaultdict
@@ -17,6 +18,11 @@ from google.protobuf import text_format
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 class WaymoOccupancyFlowDataset(Dataset):
     def __init__(self, FILES) -> None:
@@ -37,7 +43,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         print(self.config)
     
     def __len__(self):
-        return 44920  # TODO WTF I need to calc it  44920
+        return 44920 
 
     def __getitem__(self, idx):
 
@@ -56,10 +62,10 @@ class WaymoOccupancyFlowDataset(Dataset):
         grid = torch.permute(grid, (2, 0, 1))
 
         waypoint = defaultdict(dict)
-        waypoint['vehicles']['observed_occupancy']    = [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
-        waypoint['vehicles']['occluded_occupancy']    = [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
-        waypoint['vehicles']['flow']                  = [wp.numpy() for wp in true_waypoints.vehicles.flow]
-        waypoint['vehicles']['flow_origin_occupancy'] = [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
+        waypoint['vehicles']['observed_occupancy']    = [wp[0].numpy() for wp in true_waypoints.vehicles.observed_occupancy]
+        waypoint['vehicles']['occluded_occupancy']    = [wp[0].numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
+        waypoint['vehicles']['flow']                  = [wp[0].numpy() for wp in true_waypoints.vehicles.flow]
+        waypoint['vehicles']['flow_origin_occupancy'] = [wp[0].numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
         
 

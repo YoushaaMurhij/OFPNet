@@ -72,7 +72,7 @@ def main(args):
 
                 true_waypoints = data['waypoints']
                 for key in true_waypoints["vehicles"].keys():
-                    true_waypoints["vehicles"][key] = [wp[0].to(device) for wp in true_waypoints["vehicles"][key]]
+                    true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
             
                 optimizer.zero_grad()
                 model_outputs = model(grids)
