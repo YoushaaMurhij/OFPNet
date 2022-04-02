@@ -33,13 +33,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument('--device', default='cuda:0', help='device')
     parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
     parser.add_argument("--pretrained", default="/logs/Epoch_4.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir'  , default='/home/workspace/Occ_Flow_Pred/logs/train_data/', help='path where to save output models and logs')
 
     parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
-    parser.add_argument('-g', '--gpus' , default=2, type=int, help='number of gpus per node')
+    parser.add_argument('-g', '--gpus' , default=1, type=int, help='number of gpus per node')
     parser.add_argument('-nr', '--nr'  , default=0, type=int, help='ranking within the nodes')
 
     args = parser.parse_args()
@@ -57,16 +56,14 @@ def train(gpu, args):
 
     wandb.config.update(args)
 
-    now = datetime.now()
     tag = "train_unet"
-    save_str = now.strftime("%d-%m-%Y-%H-%M-%S-") + tag
+    save_str = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + tag
     PATH = os.path.join(args.save_dir, save_str)
     if not os.path.exists(PATH):
         os.makedirs(PATH, exist_ok=True)
 
-    model = UNet(config.INPUT_SIZE, config.NUM_CLASSES) #.to(device)
     torch.cuda.set_device(gpu)
-    model.cuda(gpu)
+    model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).cuda(gpu)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
 
     wandb.watch(model)
@@ -108,7 +105,7 @@ def train(gpu, args):
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch + 1}")
-                grids = data['grids'] # .to(device)
+                grids = data['grids'] 
 
                 true_waypoints = data['waypoints']
                 # for key in true_waypoints["vehicles"].keys():
@@ -147,7 +144,7 @@ if __name__=="__main__":
 
     args.world_size = args.gpus * args.nodes               
     os.environ['MASTER_ADDR'] = 'localhost'            
-    os.environ['MASTER_PORT'] = '8888'                    
+    os.environ['MASTER_PORT'] = '8880'                    
     mp.spawn(train, nprocs=args.gpus, args=(args,))
 
     # main(args)

@@ -20,7 +20,7 @@ cd ..
 ./docker/into.sh
 
 ```
-# Conda environment:
+# Conda environment (not recommended):
 ```bash
 conda create --name occ_flow 
 conda activate occ_flow

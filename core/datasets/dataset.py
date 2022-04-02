@@ -59,12 +59,12 @@ class WaymoOccupancyFlowDataset(Dataset):
         grid = torch.permute(grid, (2, 0, 1)).cuda(self.gpu)
 
         waypoint = defaultdict(dict)
-        waypoint['vehicles']['observed_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.observed_occupancy]
-        waypoint['vehicles']['occluded_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.occluded_occupancy]
-        waypoint['vehicles']['flow']                  = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow]
-        waypoint['vehicles']['flow_origin_occupancy'] = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow_origin_occupancy]
+        waypoint['vehicles']['observed_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.observed_occupancy]    # (1, 256, 256, 1) * 8
+        waypoint['vehicles']['occluded_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.occluded_occupancy]    # (1, 256, 256, 1) * 8
+        waypoint['vehicles']['flow']                  = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow]                  # (1, 256, 256, 1) * 8
+        waypoint['vehicles']['flow_origin_occupancy'] = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow_origin_occupancy] # (1, 256, 256, 1) * 8
 
-        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx} # 'scenario/id': ID
+        sample = {'grids': grid, 'waypoints': waypoint} # 'index': idx 'scenario/id': ID
 
         return sample
 

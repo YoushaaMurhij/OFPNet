@@ -8,13 +8,11 @@ from configs import config as CONFIG
 import pickle
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
+if gpus:
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
 
 def main():
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
     filenames = tf.io.gfile.glob(CONFIG.TRAIN_FILES)
     
     config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
