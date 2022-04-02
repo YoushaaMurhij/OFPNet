@@ -1,51 +1,21 @@
 import os
-from matplotlib.pyplot import grid
-import numpy as np
 import tensorflow as tf
 from google.protobuf import text_format
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
-import collections
+from configs import config as CONFIG
 import pickle
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
-
-DATASET_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/uncompressed'
-DATASET_PKL_FOLDER = '/media/hdd/benchmarks/Waymo_Motion/waymo_open_dataset_motion_v_1_1_0/pkls/sample'
-SAMPLE_FILES = f'{DATASET_FOLDER}/tf_example/sample/training_tfexample.tfrecord*'
-# Text files containing validation and test scenario IDs for this challenge.
-VAL_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/validation_scenario_ids.txt'
-TEST_SCENARIO_IDS_FILE = f'{DATASET_FOLDER}/occupancy_flow_challenge/testing_scenario_ids.txt'
-
-NUM_PRED_CHANNELS = 4
-
-def _make_model_inputs(
-    timestep_grids: occupancy_flow_grids.TimestepGrids,
-    vis_grids: occupancy_flow_grids.VisGrids,
-) -> tf.Tensor:
-  """Concatenates all occupancy grids over past, current to a single tensor."""
-  model_inputs = tf.concat(
-      [
-          vis_grids.roadgraph,
-          timestep_grids.vehicles.past_occupancy,
-          timestep_grids.vehicles.current_occupancy,
-          tf.clip_by_value(
-              timestep_grids.pedestrians.past_occupancy +
-              timestep_grids.cyclists.past_occupancy, 0, 1),
-          tf.clip_by_value(
-              timestep_grids.pedestrians.current_occupancy +
-              timestep_grids.cyclists.current_occupancy, 0, 1),
-      ],
-      axis=-1,
-  )
-  return model_inputs
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 def main():
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-    # filenames = tf.io.matching_files(SAMPLE_FILES)
-    filenames = tf.io.gfile.glob(SAMPLE_FILES)
+    filenames = tf.io.gfile.glob(CONFIG.TRAIN_FILES)
     
     config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
     config_text = """
@@ -66,53 +36,16 @@ def main():
     print("Used configs:")
     print(config)
     print("Started Converting to numpy pkls...")
-    for i, filename in enumerate(filenames[:2]):
+    for i, filename in enumerate(filenames):
         dataset = tf.data.TFRecordDataset(filename, compression_type='')
         dataset = dataset.map(occupancy_flow_data.parse_tf_example)
         dataset = dataset.batch(1)
+        print('processing frames from scene #' + str(i))
         for j, inputs in enumerate(dataset):
             ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
-            print('processing frame #' + str(j) + ' from scene #' + str(i) + ' with id: ' + ID)
 
-            inputs = occupancy_flow_data.add_sdc_fields(inputs)
-
-            timestep_grids = occupancy_flow_grids.create_ground_truth_timestep_grids(
-                inputs=inputs, config=config)
-
-            true_waypoints = occupancy_flow_grids.create_ground_truth_waypoint_grids(
-                timestep_grids=timestep_grids, config=config)
-
-            vis_grids = occupancy_flow_grids.create_ground_truth_vis_grids(
-                inputs=inputs, timestep_grids=timestep_grids, config=config)
-
-            model_inputs = _make_model_inputs(timestep_grids, vis_grids)
-
-            grid_dict = {}
-            grid_dict['scenario/id'] = ID
-            grid_dict['grid'] = model_inputs.numpy()
-
-            with open(DATASET_PKL_FOLDER + '/grids/' + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
-                pickle.dump(grid_dict, f)
-
-            true_waypoints_dict = collections.defaultdict(dict)
-
-            true_waypoints_dict['vehicles']['observed_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.observed_occupancy]
-            true_waypoints_dict['vehicles']['occluded_occupancy'] =    [wp.numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
-            true_waypoints_dict['vehicles']['flow'] =                  [wp.numpy() for wp in true_waypoints.vehicles.flow]
-            true_waypoints_dict['vehicles']['flow_origin_occupancy'] = [wp.numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
-
-            # true_waypoints_dict['pedestrians']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.observed_occupancy]
-            # true_waypoints_dict['pedestrians']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.pedestrians.occluded_occupancy]
-            # true_waypoints_dict['pedestrians']['flow']=                  [wp.numpy() for wp in true_waypoints.pedestrians.flow]
-            # true_waypoints_dict['pedestrians']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.pedestrians.flow_origin_occupancy]
-
-            # true_waypoints_dict['cyclists']['observed_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.observed_occupancy]
-            # true_waypoints_dict['cyclists']['occluded_occupancy']=    [wp.numpy() for wp in true_waypoints.cyclists.occluded_occupancy]
-            # true_waypoints_dict['cyclists']['flow']=                  [wp.numpy() for wp in true_waypoints.cyclists.flow]
-            # true_waypoints_dict['cyclists']['flow_origin_occupancy']= [wp.numpy() for wp in true_waypoints.cyclists.flow_origin_occupancy]
-
-            with open(DATASET_PKL_FOLDER + '/waypoints/' + filename.split('-')[-3] + '_' + ID + '.pkl','wb') as f: 
-                pickle.dump(true_waypoints_dict, f)
+            with open(CONFIG.DATASET_PKL_FOLDER + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
+                pickle.dump(inputs, f)
     
     print("Done Converting to numpy pkls...")
         

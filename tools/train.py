@@ -7,12 +7,12 @@
 # Description: Training script for Occupancy and Flow Prediction
 """
 import os
+import wandb
 import argparse
 import numpy as np
 from tqdm import tqdm
 from time import sleep
 from datetime import datetime
-from collections import defaultdict
 
 import torch
 import torch.optim as optim
@@ -23,10 +23,9 @@ from core.models.unet import UNet
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import config
-import wandb
 
 os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
-os.environ["WANDB_MODE"] = "online"
+os.environ["WANDB_MODE"] = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
 wandb.init(project="occupancy-flow", entity="youshaamurhij")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
@@ -56,21 +55,22 @@ def main(args):
         model.load_state_dict(checkpoint)
         print(f'Weights are loaded from: {args.pretrained}.')
 
+    dataset = WaymoOccupancyFlowDataset(data_dir=config.DATASET_PKL_FOLDER, device=device) 
+    train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
     
     model.train()
     for epoch in range(config.EPOCHS):
-        dataset = WaymoOccupancyFlowDataset(FILES=config.TRAIN_FILES) 
-        train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
+        
         with tqdm(train_loader, unit = "batch") as tepoch:
             for i, data in enumerate(tepoch):
                 tepoch.set_description(f"Epoch {epoch}")
-                grids = data['grids'].to(device)
+                grids = data['grids'] # .to(device)
 
                 true_waypoints = data['waypoints']
-                for key in true_waypoints["vehicles"].keys():
-                    true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
+                # for key in true_waypoints["vehicles"].keys():
+                #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
             
                 optimizer.zero_grad()
                 model_outputs = model(grids)

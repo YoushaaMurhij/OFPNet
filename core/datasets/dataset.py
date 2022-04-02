@@ -8,10 +8,12 @@
 """
 import os
 import torch
+import pickle as pkl
+from os import listdir
+from os.path import isfile, join
 from torch.utils.data import Dataset
 from collections import defaultdict
 from core.utils.io import make_model_inputs
-from configs import config
 
 import tensorflow as tf
 from google.protobuf import text_format
@@ -25,15 +27,13 @@ for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 class WaymoOccupancyFlowDataset(Dataset):
-    def __init__(self, FILES) -> None:
+    def __init__(self, data_dir, device) -> None:
         super().__init__()
         
-        filenames = tf.io.matching_files(FILES)
-        dataset = tf.data.TFRecordDataset(filenames, compression_type='')
-        dataset = dataset.map(occupancy_flow_data.parse_tf_example)
-        dataset = dataset.batch(1)
-    
-        self.it = iter(dataset)
+        self.device = device
+        self.data_dir = data_dir
+        self.scenes = [f for f in listdir(self.data_dir) if isfile(join(self.data_dir, f))]
+        print(len(self.scenes))
         self.config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
         text_format.Parse(open('./configs/config.txt').read(), self.config)
 
@@ -43,13 +43,15 @@ class WaymoOccupancyFlowDataset(Dataset):
         print(self.config)
     
     def __len__(self):
-        return 487002 # for training || 44920 for testing  
+        return len(self.scenes)   #487002 # for training || 44920 for testing  
 
     def __getitem__(self, idx):
 
-        inputs = next(self.it)
+        scene = self.scenes[idx]
+        inputs_pkl = open(self.data_dir + scene, 'rb')
+        inputs = pkl.load(inputs_pkl)
 
-        ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
+        # ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
         inputs = occupancy_flow_data.add_sdc_fields(inputs)
 
         timestep_grids = occupancy_flow_grids.create_ground_truth_timestep_grids(inputs=inputs, config=self.config)
@@ -58,18 +60,16 @@ class WaymoOccupancyFlowDataset(Dataset):
 
         model_inputs = make_model_inputs(timestep_grids, vis_grids).numpy()
 
-        grid = torch.tensor(model_inputs[0])
+        grid = torch.tensor(model_inputs[0]).to(self.device)
         grid = torch.permute(grid, (2, 0, 1))
 
         waypoint = defaultdict(dict)
-        waypoint['vehicles']['observed_occupancy']    = [wp[0].numpy() for wp in true_waypoints.vehicles.observed_occupancy]
-        waypoint['vehicles']['occluded_occupancy']    = [wp[0].numpy() for wp in true_waypoints.vehicles.occluded_occupancy]
-        waypoint['vehicles']['flow']                  = [wp[0].numpy() for wp in true_waypoints.vehicles.flow]
-        waypoint['vehicles']['flow_origin_occupancy'] = [wp[0].numpy() for wp in true_waypoints.vehicles.flow_origin_occupancy]
+        waypoint['vehicles']['observed_occupancy']    = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.observed_occupancy]
+        waypoint['vehicles']['occluded_occupancy']    = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.occluded_occupancy]
+        waypoint['vehicles']['flow']                  = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.flow]
+        waypoint['vehicles']['flow_origin_occupancy'] = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
-        
-
-        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx, 'scenario/id': ID}
+        sample = {'grids': grid, 'waypoints': waypoint, 'index': idx} # 'scenario/id': ID
 
         return sample
 
