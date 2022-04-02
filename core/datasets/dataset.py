@@ -8,6 +8,7 @@
 """
 import os
 import torch
+import numpy as np 
 import pickle as pkl
 from os import listdir
 from os.path import isfile, join
@@ -27,21 +28,15 @@ for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 class WaymoOccupancyFlowDataset(Dataset):
-    def __init__(self, data_dir, device) -> None:
+    def __init__(self, data_dir, gpu) -> None:
         super().__init__()
         
-        self.device = device
+        self.gpu = gpu
         self.data_dir = data_dir
         self.scenes = [f for f in listdir(self.data_dir) if isfile(join(self.data_dir, f))]
-        print(len(self.scenes))
         self.config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
         text_format.Parse(open('./configs/config.txt').read(), self.config)
 
-        print("------------------------------------------")
-        print("Occupency and Flow Prediction Parameters")
-        print("------------------------------------------")
-        print(self.config)
-    
     def __len__(self):
         return len(self.scenes)   #487002 # for training || 44920 for testing  
 
@@ -60,14 +55,14 @@ class WaymoOccupancyFlowDataset(Dataset):
 
         model_inputs = make_model_inputs(timestep_grids, vis_grids).numpy()
 
-        grid = torch.tensor(model_inputs[0]).to(self.device)
-        grid = torch.permute(grid, (2, 0, 1))
+        grid = torch.tensor(model_inputs[0])
+        grid = torch.permute(grid, (2, 0, 1)).cuda(self.gpu)
 
         waypoint = defaultdict(dict)
-        waypoint['vehicles']['observed_occupancy']    = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.observed_occupancy]
-        waypoint['vehicles']['occluded_occupancy']    = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.occluded_occupancy]
-        waypoint['vehicles']['flow']                  = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.flow]
-        waypoint['vehicles']['flow_origin_occupancy'] = [torch.tensor(wp[0].numpy()).to(self.device) for wp in true_waypoints.vehicles.flow_origin_occupancy]
+        waypoint['vehicles']['observed_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.observed_occupancy]
+        waypoint['vehicles']['occluded_occupancy']    = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.occluded_occupancy]
+        waypoint['vehicles']['flow']                  = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow]
+        waypoint['vehicles']['flow_origin_occupancy'] = [torch.tensor(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow_origin_occupancy]
 
         sample = {'grids': grid, 'waypoints': waypoint, 'index': idx} # 'scenario/id': ID
 

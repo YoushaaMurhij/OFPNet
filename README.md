@@ -36,5 +36,3 @@ export PYTHONPATH="${PYTHONPATH}:/path/to/Occ_Flow_Pred/"
 ## TODOs:
 - [ ] add visualizer
 - [ ] add eval script
-- [ ] add wandb
-- [ ] add iterable dataloader (DALI)
