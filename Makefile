@@ -81,5 +81,5 @@ docker-run-mpi: docker-build
 		bash -c "${MPI_CMD} ${COMMAND}"
 
 clean:
-	find . -name '"*.pyc' | xargs sudo rm -f && \
-	find . -name '__pycache__' | xargs sudo rm -rf
+	find . -name '"*.pyc' | xargs rm -f && \
+	find . -name '__pycache__' | xargs rm -rf
