@@ -19,15 +19,21 @@ RUN pip3 install torch torchvision --extra-index-url https://download.pytorch.or
 
 RUN pip3 install wandb
 
+ARG WORKSPACE
+# COPY . ${WORKSPACE}
+
+ENV PYTHONPATH "${PYTHONPATH}:${WORKSPACE}/"
+WORKDIR ${WORKSPACE}
+
 # Add docker user
-ARG USER=docker_occupancy_flow
-ARG UID=1001
-ARG GID=1001
-# default password
-ARG PW=user 
-RUN useradd -m ${USER} --uid=${UID} && echo "${USER}:${PW}" | chpasswd && adduser ${USER} sudo
+# ARG USER=docker_occupancy_flow
+# ARG UID=1001
+# ARG GID=1001
+# # default password
+# ARG PW=user 
+# RUN useradd -m ${USER} --uid=${UID} && echo "${USER}:${PW}" | chpasswd && adduser ${USER} sudo
 
-WORKDIR /home/${USER}
-RUN cd /home/${USER} && mkdir workspace && chown -R ${UID}:${GID} ./
+# WORKDIR /home/${USER}
+# RUN cd /home/${USER} && mkdir workspace && chown -R ${UID}:${GID} ./
 
-USER ${UID}:${GID}
+# USER ${UID}:${GID}
