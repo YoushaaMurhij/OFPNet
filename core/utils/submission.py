@@ -18,14 +18,14 @@ from core.utils.io import make_model_inputs, get_pred_waypoint_logits
 from configs import config    #TODO remove it and replace it with challenge configs
 
 DEVICE = 'cuda:0'
-PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/Epoch_4.pth"
+PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/Epoch_1.pth"
 
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
 model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(DEVICE)
 checkpoint = torch.load(PRETRAINED, map_location='cpu')
-model.load_state_dict(checkpoint)
+model.load_state_dict(checkpoint['model_state_dict'])
 
 def run_model_on_inputs(inputs):
 

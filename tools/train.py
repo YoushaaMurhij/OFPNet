@@ -79,7 +79,7 @@ def train(gpu, args):
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
 
-        model.load_state_dict(checkpoint)
+        # model.load_state_dict(checkpoint)
         print(f'Weights are loaded from: {args.pretrained}.')
 
     dataset = WaymoOccupancyFlowDataset(data_dir=config.DATASET_PKL_FOLDER, gpu=gpu) 
