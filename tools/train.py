@@ -7,6 +7,7 @@
 # Description: Training script for Occupancy and Flow Prediction
 """
 import os
+import time
 import wandb
 import argparse
 import numpy as np
@@ -103,8 +104,9 @@ def train(gpu, args):
     for epoch in range(config.EPOCHS):
         
         with tqdm(train_loader, unit = "batch") as tepoch:
-            for i, data in enumerate(tepoch):
-                tepoch.set_description(f"Epoch {epoch + 1}")
+            tepoch.set_description(f"Epoch {epoch + 1}")
+
+            for data in tepoch:
                 grids = data['grids'] 
 
                 true_waypoints = data['waypoints']
@@ -144,7 +146,7 @@ if __name__=="__main__":
 
     args.world_size = args.gpus * args.nodes               
     os.environ['MASTER_ADDR'] = 'localhost'            
-    os.environ['MASTER_PORT'] = '8880'                    
+    os.environ['MASTER_PORT'] = '8881'                    
     mp.spawn(train, nprocs=args.gpus, args=(args,))
 
     # main(args)
