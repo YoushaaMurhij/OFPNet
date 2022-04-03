@@ -20,7 +20,6 @@ DOCKER_OPTS = \
 	--shm-size=40G \
 	--ipc=host \
 	--network=host \
-	--privileged \
 	-v $(workspace_dir):$(WORKSPACE):rw \
     -v $(dataset_dir):$(WORKSPACE)/data/Waymo_Motion:rw 
 

@@ -12,7 +12,6 @@ import wandb
 import argparse
 import numpy as np
 from tqdm import tqdm
-from time import sleep
 from datetime import datetime
 
 import torch
@@ -27,9 +26,9 @@ from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import config
 
-os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
-os.environ["WANDB_MODE"] = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
-wandb.init(project="occupancy-flow", entity="youshaamurhij")
+# os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
+# os.environ["WANDB_MODE"] = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
+# wandb.init(project="occupancy-flow", entity="youshaamurhij")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
@@ -55,7 +54,7 @@ def train(gpu, args):
     	rank=rank                                               
     )    
 
-    wandb.config.update(args)
+    # wandb.config.update(args)
 
     tag = "train_unet"
     save_str = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + tag
@@ -66,8 +65,9 @@ def train(gpu, args):
     torch.cuda.set_device(gpu)
     model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).cuda(gpu)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-
-    wandb.watch(model)
+    print("Model structure: ")
+    print(model)
+    # wandb.watch(model)
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
 
@@ -103,34 +103,36 @@ def train(gpu, args):
     model.train()
     for epoch in range(config.EPOCHS):
         
-        with tqdm(train_loader, unit = "batch") as tepoch:
-            tepoch.set_description(f"Epoch {epoch + 1}")
+        # with tqdm(train_loader, unit = "batch") as tepoch:
+        #     tepoch.set_description(f"Epoch {epoch + 1}")
 
-            for data in tepoch:
-                grids = data['grids'] 
+        for j, data in enumerate(train_loader):
+            grids = data['grids'] 
 
-                true_waypoints = data['waypoints']
-                # for key in true_waypoints["vehicles"].keys():
-                #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
-            
-                optimizer.zero_grad()
-                model_outputs = model(grids)
-                pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
-
-                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
-                wandb.log({"observed_xe loss": loss_dict['observed_xe']})
-                wandb.log({"occluded_xe loss": loss_dict['occluded_xe']})
-                wandb.log({"flow loss": loss_dict['flow']})
-                loss = sum(loss_dict.values())
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
-
-                tepoch.set_postfix(loss=loss.item())
-                wandb.log({"loss": loss.item()})
-                wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
-
+            true_waypoints = data['waypoints']
+            # for key in true_waypoints["vehicles"].keys():
+            #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
         
+            optimizer.zero_grad()
+            model_outputs = model(grids)
+            pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
+
+            loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
+            # wandb.log({"observed_xe loss": loss_dict['observed_xe']})
+            # wandb.log({"occluded_xe loss": loss_dict['occluded_xe']})
+            # wandb.log({"flow loss": loss_dict['flow']})
+            loss = sum(loss_dict.values())
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+            if j % 50 == 0:
+                print("Epoch: ", epoch + 1, " | Iter: ", '{:0>6}'.format(j), " | Loss: ", '{:.5f}'.format(loss.item()), " | Lr: ", '{:.6f}'.format(optimizer.param_groups[0]['lr']))
+
+            # tepoch.set_postfix(loss=loss.item())
+            # wandb.log({"loss": loss.item()})
+            # wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
+
+        print("Saving checkpoint for epoch :", epoch)
         CKPT_DIR = PATH +'/Epoch_'+str(epoch + 1)+'.pth'
         torch.save({
             'epoch': epoch,
