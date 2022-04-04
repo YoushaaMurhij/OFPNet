@@ -108,3 +108,22 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
+
+
+import time
+
+def main():
+    model = UNet(n_channels=23, n_classes=32).to("cuda:0")
+
+    for i in range(100):
+        inputs = torch.rand((1,23,256,256)).to("cuda:0")
+        t = time.time()
+        torch.cuda.synchronize()
+        output = model(inputs)
+        torch.cuda.synchronize()
+
+        print("inf time =", time.time() - t)
+        # print(output.shape)
+
+if __name__ == "__main__":
+    main()

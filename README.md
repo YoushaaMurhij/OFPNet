@@ -37,3 +37,4 @@ export PYTHONPATH="${PYTHONPATH}:/path/to/Occ_Flow_Pred/"
 - [ ] add visualizer
 - [ ] add eval script
 - [ ] replace tqpm 
+- [ ] forward time + total 
