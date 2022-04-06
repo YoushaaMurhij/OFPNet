@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------------
 # Author: Youshaa Murhij
 # DoC: 2022.03.26
-# email: yosha.morheg@gmail.com
+# Email: yosha.morheg@gmail.com
 -----------------------------------------------------------------------------------
 # Description: Training script for Occupancy and Flow Prediction
 """
@@ -64,7 +64,6 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    # model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).cuda(gpu)
     model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
     print("Model structure: ")
@@ -72,7 +71,7 @@ def train(gpu, args):
     wandb.watch(model)
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-
+    epoch = 0
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
 
@@ -81,7 +80,6 @@ def train(gpu, args):
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
 
-        # model.load_state_dict(checkpoint)
         print(f'Weights are loaded from: {args.pretrained}.')
 
     dataset = WaymoOccupancyFlowDataset(data_dir=config.DATASET_PKL_FOLDER, gpu=gpu) 
@@ -99,50 +97,47 @@ def train(gpu, args):
         pin_memory=False,
         sampler=train_sampler)
 
-    N_DATALOADER = len(train_loader)
-    N_EPOCHS = config.EPOCHS
+    # N_DATALOADER = len(train_loader)
+    # N_EPOCHS = config.EPOCHS
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
     # train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
     
     model.train()
-    for epoch in range(config.EPOCHS):
-        
-        # with tqdm(train_loader, unit = "batch", miniters=10) as tepoch:
-        #     tepoch.set_description(f"Epoch {epoch + 1}")
+    while epoch <= config.EPOCHS:
+        epoch += 1
+        with tqdm(train_loader, unit = "batch") as tepoch:
+            tepoch.set_description(f"Epoch {epoch}")
 
-        for j, data in enumerate(train_loader):
-            t_start = time.time()
-            grids = data['grids'] 
+            for j, data in enumerate(tepoch):
+                grids = data['grids'] 
 
-            true_waypoints = data['waypoints']
-            # for key in true_waypoints["vehicles"].keys():
-            #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
-        
-            optimizer.zero_grad()
-            model_outputs = model(grids)
-            pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
+                true_waypoints = data['waypoints']
+                # for key in true_waypoints["vehicles"].keys():
+                #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
+            
+                optimizer.zero_grad()
+                model_outputs = model(grids)
+                pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
 
-            loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
-            wandb.log({"observed_xe loss": loss_dict['observed_xe']})
-            wandb.log({"occluded_xe loss": loss_dict['occluded_xe']})
-            wandb.log({"flow loss": loss_dict['flow']})
-            loss = sum(loss_dict.values())
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
+                loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
+                wandb.log({"observed_xe loss": loss_dict['observed_xe']})
+                wandb.log({"occluded_xe loss": loss_dict['occluded_xe']})
+                wandb.log({"flow loss": loss_dict['flow']})
+                loss = sum(loss_dict.values())
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
 
-            t_end = time.time()
+                # if j % 50 == 0:
+                #     print("Epoch:", epoch + 1,"of", N_EPOCHS, "| Iter:", '{:0>6}'.format(j),"of", N_DATALOADER,
+                #      "| Loss:", '{:.5f}'.format(loss.item()), "| Lr:", '{:.6f}'.format(optimizer.param_groups[0]['lr']),
+                #      "| Forward Time:", '{:.2f}s'.format(t_end - t_start), "| Estimated Time:", '{:.1f}h'.format((t_end - t_start) * (N_DATALOADER - j) // 3600 + 1))
 
-            if j % 50 == 0:
-                print("Epoch:", epoch + 1,"of", N_EPOCHS, "| Iter:", '{:0>6}'.format(j),"of", N_DATALOADER,
-                 "| Loss:", '{:.5f}'.format(loss.item()), "| Lr:", '{:.6f}'.format(optimizer.param_groups[0]['lr']),
-                 "| Forward Time:", '{:.2f}s'.format(t_end - t_start), "| Estimated Time:", '{:.1f}h'.format((t_end - t_start) * (N_DATALOADER - j) // 3600 + 1))
+                tepoch.set_postfix(loss=loss.item())
+                wandb.log({"loss": loss.item()})
+                wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
 
-            # tepoch.set_postfix(loss=loss.item())
-            wandb.log({"loss": loss.item()})
-            wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
-
-        print("Saving checkpoint for epoch :", epoch)
+        print("Saving checkpoint for epoch:", epoch)
         CKPT_DIR = PATH +'/Epoch_'+str(epoch + 1)+'.pth'
         torch.save({
             'epoch': epoch,
@@ -150,6 +145,8 @@ def train(gpu, args):
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
             }, CKPT_DIR)
+
+        wandb.save(os.path.join(wandb.run.dir, CKPT_DIR))
 
     print('Finished Training. Model Saved!')
 

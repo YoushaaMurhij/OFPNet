@@ -1,4 +1,4 @@
-PROJECT = ofp_depug
+PROJECT = ofp
 
 WORKSPACE = /home/workspace/Occ_Flow_Pred
 DOCKER_IMAGE = x64/ofp:latest
@@ -13,7 +13,7 @@ DOCKER_OPTS = \
 	-d \
 	--rm \
 	-e DISPLAY=${DISPLAY} \
-	--gpus '"device= 0,1"' \
+	--gpus '"device= 1"' \
 	-e "NVIDIA_DRIVER_CAPABILITIES=all" \
 	-e "QT_X11_NO_MITSHM=1" \
 	-v /tmp/.X11-unix:/tmp/.X11-unix:rw \
@@ -25,6 +25,9 @@ DOCKER_OPTS = \
 
 DOCKER_BUILD_ARGS = \
 	--build-arg WORKSPACE=$(WORKSPACE) 
+
+COMMAND = python3 ./tools/train.py \
+				--gpus 1
 
 NGPUS ?= $(shell nvidia-smi -L | wc -l)
 MASTER_ADDR ?= 127.0.0.1
@@ -69,12 +72,10 @@ dist-run:
 		${DOCKER_IMAGE} \
 		${COMMAND}
 
-docker-run: docker-build
-	docker run --name $(PROJECT) --rm \
-		${DOCKER_OPTS} \
-		${DOCKER_IMAGE} \
-		${COMMAND}
-
+docker-run: 
+	docker exec -it $(PROJECT) /bin/bash -c \
+    "cd $(WORKSPACE); ${COMMAND};"
+		
 docker-run-mpi: docker-build
 	docker run ${DOCKER_OPTS} -v $(PWD)/outputs:$(WORKSPACE)/outputs ${DOCKER_IMAGE} \
 		bash -c "${MPI_CMD} ${COMMAND}"

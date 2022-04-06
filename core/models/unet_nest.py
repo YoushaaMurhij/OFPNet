@@ -658,24 +658,24 @@ class Unet_dict(nn.Module):
         return F.softmax(self.output(u0), dim=1)
 
 import time
-import onnx 
+# import onnx 
 
 def main():
     model = R2AttU_Net(in_ch=23, out_ch=32, t=4).to("cuda:0")
     x = torch.rand((1,23,256,256)).to("cuda:0")
-    torch.onnx.export(
-        model,
-        x, 
-        "R2AttU_Net.onnx", 
-        export_params=True, 
-        # opset_version=11,
-        do_constant_folding=False, 
-        input_names = ['input'], 
-        output_names = ['output'])
+    # torch.onnx.export(
+    #     model,
+    #     x, 
+    #     "R2AttU_Net.onnx", 
+    #     export_params=True, 
+    #     # opset_version=11,
+    #     do_constant_folding=False, 
+    #     input_names = ['input'], 
+    #     output_names = ['output'])
 
-    onnx_model = onnx.load("R2AttU_Net.onnx")
-    model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
-    onnx.save(model_with_shapes, "R2AttU_Net_with_shapes.onnx")
+    # onnx_model = onnx.load("R2AttU_Net.onnx")
+    # model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
+    # onnx.save(model_with_shapes, "R2AttU_Net_with_shapes.onnx")
 
     for i in range(100):
         inputs = torch.rand((1,23,256,256)).to("cuda:0")
