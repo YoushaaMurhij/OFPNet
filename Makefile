@@ -13,7 +13,7 @@ DOCKER_OPTS = \
 	-d \
 	--rm \
 	-e DISPLAY=${DISPLAY} \
-	--gpus '"device=1"' \
+	--gpus '"device= 0,1"' \
 	-e "NVIDIA_DRIVER_CAPABILITIES=all" \
 	-e "QT_X11_NO_MITSHM=1" \
 	-v /tmp/.X11-unix:/tmp/.X11-unix:rw \
@@ -61,7 +61,7 @@ docker-into:
     "cd $(WORKSPACE); nvidia-smi;/bin/bash"
 
 dist-run:
-	nvidia-docker run --name $(PROJECT) --rm \
+	docker run --name $(PROJECT) --rm \
 		-e DISPLAY=${DISPLAY} \
 		-v ~/.torch:/root/.torch \
 		${DOCKER_OPTS} \
@@ -70,15 +70,18 @@ dist-run:
 		${COMMAND}
 
 docker-run: docker-build
-	nvidia-docker run --name $(PROJECT) --rm \
+	docker run --name $(PROJECT) --rm \
 		${DOCKER_OPTS} \
 		${DOCKER_IMAGE} \
 		${COMMAND}
 
 docker-run-mpi: docker-build
-	nvidia-docker run ${DOCKER_OPTS} -v $(PWD)/outputs:$(WORKSPACE)/outputs ${DOCKER_IMAGE} \
+	docker run ${DOCKER_OPTS} -v $(PWD)/outputs:$(WORKSPACE)/outputs ${DOCKER_IMAGE} \
 		bash -c "${MPI_CMD} ${COMMAND}"
 
 clean:
 	find . -name '"*.pyc' | xargs rm -f && \
 	find . -name '__pycache__' | xargs rm -rf
+
+stop:
+	docker stop $(PROJECT)
