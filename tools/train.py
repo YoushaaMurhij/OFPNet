@@ -141,12 +141,10 @@ def train(gpu, args):
         CKPT_DIR = PATH +'/Epoch_'+str(epoch + 1)+'.pth'
         torch.save({
             'epoch': epoch,
-            'model_state_dict': model.state_dict(),
+            'model_state_dict': model.module.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
             }, CKPT_DIR)
-
-        wandb.save(os.path.join(wandb.run.dir, CKPT_DIR))
 
     print('Finished Training. Model Saved!')
 
