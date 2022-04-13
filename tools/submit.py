@@ -6,9 +6,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction submission')
+    parser.add_argument('--method', help='Unique method name', required=True)
+    parser.add_argument("--description", help="Brief description of the method", required=True)
+
+    args = parser.parse_args()
+    return args
+
 def main():
 
-    test_shard_paths = tf.io.gfile.glob(config.VAL_FILES)
+    test_shard_paths = sorted(tf.io.gfile.glob(config.VAL_FILES))
 
     with tf.io.gfile.GFile(config.VAL_SCENARIO_IDS_FILE) as f:
         test_scenario_ids = f.readlines()
@@ -23,7 +32,7 @@ def main():
         print(f'Creating submission for test shard {test_shard_path}...')
 
         test_dataset = make_test_dataset(test_shard_path=test_shard_path)
-        submission = make_submission_proto()
+        submission = make_submission_proto(args.method, args.description)
         generate_predictions_for_one_test_shard(
             submission=submission,
             test_dataset=test_dataset,
@@ -38,4 +47,5 @@ def main():
         #     print(submission.scenario_predictions[-1])
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)

@@ -44,15 +44,15 @@ def run_model_on_inputs(inputs):
 
     return pred_waypoint_logits
 
-def make_submission_proto() -> occupancy_flow_submission_pb2.ChallengeSubmission:
+def make_submission_proto(method, description) -> occupancy_flow_submission_pb2.ChallengeSubmission:
 
     """Makes a submission proto to store predictions for one shard."""
 
     submission = occupancy_flow_submission_pb2.ChallengeSubmission()
     submission.account_name = 'yosha.morheg@phystech.edu'
-    submission.unique_method_name = 'Occupancy UNet'
+    submission.unique_method_name = method
     submission.authors.extend(['Youshaa Murhij', 'Dmitry Yudin'])
-    submission.description = 'Encoder-Decoder based prediction'
+    submission.description = description
     submission.method_link = 'https://github.com/YoushaaMurhij/Occ_Flow_Pred'
     return submission
 
