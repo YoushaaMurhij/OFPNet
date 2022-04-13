@@ -3,7 +3,9 @@ from core.utils.submission import *
 from configs import config
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
-
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 def main():
 
     test_shard_paths = tf.io.gfile.glob(config.VAL_FILES)

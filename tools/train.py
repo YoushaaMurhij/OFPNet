@@ -138,7 +138,7 @@ def train(gpu, args):
                 wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
 
         print("Saving checkpoint for epoch:", epoch)
-        CKPT_DIR = PATH +'/Epoch_'+str(epoch + 1)+'.pth'
+        CKPT_DIR = PATH +'/Epoch_'+str(epoch)+'.pth'
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.module.state_dict(),

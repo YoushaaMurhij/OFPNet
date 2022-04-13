@@ -13,17 +13,17 @@ from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
 
-from core.models.unet import UNet
+from core.models.unet_nest import R2AttU_Net
 from core.utils.io import make_model_inputs, get_pred_waypoint_logits
 from configs import config    #TODO remove it and replace it with challenge configs
 
 DEVICE = 'cuda:0'
-PRETRAINED = "/home/workspace/Occ_Flow_Pred/pretrained/UNet_Epoch_1.pth"
+PRETRAINED = "/home/workspace/Occ_Flow_Pred/pretrained/Epoch_3.pth"
 
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
-model = UNet(config.INPUT_SIZE, config.NUM_CLASSES).to(DEVICE)
+model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).to(DEVICE)
 checkpoint = torch.load(PRETRAINED, map_location='cpu')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
