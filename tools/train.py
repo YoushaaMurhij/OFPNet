@@ -21,7 +21,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
-from core.models.unet import UNet
+from core.models.efficientdet.backbone import EfficientDetBackbone
 from core.models.unet_nest import R2AttU_Net
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
@@ -64,11 +64,11 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
+    # model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
+    model = EfficientDetBackbone(compound_coef=1).cuda(gpu)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
     print("Model structure: ")
     print(model)
-    wandb.watch(model)
 
     optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
     epoch = 0
