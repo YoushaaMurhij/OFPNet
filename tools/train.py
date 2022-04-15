@@ -22,13 +22,13 @@ import torch.multiprocessing as mp
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.efficientdet.backbone import EfficientDetBackbone
-from core.models.unet_nest import R2AttU_Net
+# from core.models.unet_nest import R2AttU_Net
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import config
 
 os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
-os.environ["WANDB_MODE"] = "online"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
+os.environ["WANDB_MODE"] = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
@@ -153,7 +153,7 @@ if __name__=="__main__":
 
     args.world_size = args.gpus * args.nodes               
     os.environ['MASTER_ADDR'] = 'localhost'            
-    os.environ['MASTER_PORT'] = '8881'                    
+    os.environ['MASTER_PORT'] = '8882'                    
     mp.spawn(train, nprocs=args.gpus, args=(args,))
 
     # main(args)

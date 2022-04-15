@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils import model_zoo
-from .utils_extra import Conv2dStaticSamePadding
+from core.models.efficientnet.utils_extra import Conv2dStaticSamePadding
 
 ########################################################################
 ############### HELPERS FUNCTIONS FOR MODEL ARCHITECTURE ###############

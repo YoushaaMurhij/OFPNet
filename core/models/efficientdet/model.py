@@ -1,9 +1,9 @@
 import torch.nn as nn
 import torch
 
-from efficientnet import EfficientNet as EffNet
-from efficientnet.utils import MemoryEfficientSwish, Swish
-from efficientnet.utils_extra import Conv2dStaticSamePadding, MaxPool2dStaticSamePadding
+from core.models.efficientnet import EfficientNet as EffNet
+from core.models.efficientnet.utils import MemoryEfficientSwish, Swish
+from core.models.efficientnet.utils_extra import Conv2dStaticSamePadding, MaxPool2dStaticSamePadding
 
 
 class SeparableConvBlock(nn.Module):
