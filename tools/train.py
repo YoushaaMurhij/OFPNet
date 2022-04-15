@@ -16,7 +16,6 @@ from datetime import datetime
 
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
@@ -66,7 +65,7 @@ def train(gpu, args):
     torch.cuda.set_device(gpu)
     # model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
     model = EfficientDetBackbone(compound_coef=1).cuda(gpu)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=True)
     print("Model structure: ")
     print(model)
 

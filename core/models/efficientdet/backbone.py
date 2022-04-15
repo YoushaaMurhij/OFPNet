@@ -41,7 +41,7 @@ class EfficientDetBackbone(nn.Module):
 
         self.backbone_net = EfficientNet(self.backbone_compound_coef[compound_coef], load_weights)
 
-        self.up = nn.ConvTranspose2d(23, 23, kernel_size=2, stride=2)
+        # self.up = nn.ConvTranspose2d(23, 23, kernel_size=2, stride=2)
 
         self.up3 = nn.ConvTranspose2d(conv_channel_coef[compound_coef][0], conv_channel_coef[compound_coef][0], kernel_size=2, stride=2)
         self.up4 = nn.ConvTranspose2d(conv_channel_coef[compound_coef][1], conv_channel_coef[compound_coef][1], kernel_size=2, stride=2)
@@ -70,7 +70,7 @@ class EfficientDetBackbone(nn.Module):
 
     def forward(self, inputs):
         
-        input = self.up(inputs)
+        # inputs = self.up(inputs)
 
         _, p3, p4, p5 = self.backbone_net(inputs)
 
@@ -92,7 +92,6 @@ class EfficientDetBackbone(nn.Module):
         x = self.conv_final1(x)
         x = self.up_final2(x)
         x = self.conv_final2(x)
-
         return x 
 
     def init_backbone(self, path):
