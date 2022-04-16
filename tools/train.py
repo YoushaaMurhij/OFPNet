@@ -69,7 +69,11 @@ def train(gpu, args):
     print("Model structure: ")
     print(model)
 
-    optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
+    if config.OPTIMIZER == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=config.LR)
+    else:
+        optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
+
     epoch = 0
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
@@ -96,10 +100,11 @@ def train(gpu, args):
         pin_memory=False,
         sampler=train_sampler)
 
-    # N_DATALOADER = len(train_loader)
-    # N_EPOCHS = config.EPOCHS
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
-    # train_loader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE)
+
+    if config.SCHEDULER == 'ReduceLROnPlateau':
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, verbose=True)
+    else:
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
     
     model.train()
     while epoch <= config.EPOCHS:

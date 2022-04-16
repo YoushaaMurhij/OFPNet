@@ -30,6 +30,8 @@ NUM_WAYPOINTS = 8
 # agent_points_per_side_width: 16
 
 # Train configs
+OPTIMIZER        = 'adamw'
+SCHEDULER        = 'CosineAnnealingLR'
 TRAIN_BATCH_SIZE = 32
 VAL_BATCH_SIZE   = 1
 
