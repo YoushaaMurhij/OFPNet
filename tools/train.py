@@ -32,7 +32,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument('--resume', default='', help='resume from checkpoint', action="store_true")
+    parser.add_argument('--resume', help='resume from checkpoint', action="store_true")
     parser.add_argument("--pretrained", default="/logs/Epoch_4.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir'  , default='/home/workspace/Occ_Flow_Pred/logs/train_data/', help='path where to save output models and logs')
 
@@ -40,11 +40,14 @@ def parse_args():
     parser.add_argument('-g', '--gpus' , default=1, type=int, help='number of gpus per node')
     parser.add_argument('-nr', '--nr'  , default=0, type=int, help='ranking within the nodes')
 
+    parser.add_argument('--master_port', help='specify a port', required=True)
+    parser.add_argument('--title'      , help='choose a title for your wandb/log process', required=True)
+
     args = parser.parse_args()
     return args
 
 def train(gpu, args):
-    wandb.init(project="occupancy-flow", entity="youshaamurhij")
+    wandb.init(project="occupancy-flow", entity="youshaamurhij", name=args.title)
 
     rank = args.nr * args.gpus + gpu	                          
     dist.init_process_group(                                   
@@ -56,8 +59,7 @@ def train(gpu, args):
 
     wandb.config.update(args)
 
-    tag = "train_unet"
-    save_str = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + tag
+    save_str = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + args.title
     PATH = os.path.join(args.save_dir, save_str)
     if not os.path.exists(PATH):
         os.makedirs(PATH, exist_ok=True)
@@ -157,7 +159,7 @@ if __name__=="__main__":
 
     args.world_size = args.gpus * args.nodes               
     os.environ['MASTER_ADDR'] = 'localhost'            
-    os.environ['MASTER_PORT'] = '8882'                    
+    os.environ['MASTER_PORT'] = args.master_port  # '8882'                    
     mp.spawn(train, nprocs=args.gpus, args=(args,))
 
     # main(args)
