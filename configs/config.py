@@ -30,6 +30,7 @@ NUM_WAYPOINTS = 8
 # agent_points_per_side_width: 16
 
 # Train configs
+WANDB_MODE       = "online"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
 OPTIMIZER        = 'adamw'
 SCHEDULER        = 'CosineAnnealingLR'
 TRAIN_BATCH_SIZE = 32
@@ -40,5 +41,5 @@ NUM_CLASSES      = 32
 
 WEIGHT_DECAY     = 0.007
 EPOCHS           = 4
-LR               = 0.001
+LR               = 0.000001
 MOMENTUM         = 0.8

@@ -27,19 +27,17 @@ from core.utils.io import get_pred_waypoint_logits
 from configs import config
 
 os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
-os.environ["WANDB_MODE"] = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
+os.environ["WANDB_MODE"]    = config.WANDB_MODE
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument('--resume', help='resume from checkpoint', action="store_true")
-    parser.add_argument("--pretrained", default="/logs/Epoch_4.pth", help="Use pre-trained models")
-    parser.add_argument('--save_dir'  , default='/home/workspace/Occ_Flow_Pred/logs/train_data/', help='path where to save output models and logs')
-
+    parser.add_argument("--pretrained" , default="/logs/Epoch_4.pth", help="Use pre-trained models")
+    parser.add_argument('--save_dir'   , default='/home/workspace/Occ_Flow_Pred/logs/train_data/', help='path where to save output models and logs')
     parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
     parser.add_argument('-g', '--gpus' , default=1, type=int, help='number of gpus per node')
     parser.add_argument('-nr', '--nr'  , default=0, type=int, help='ranking within the nodes')
-
+    parser.add_argument('--resume'     , help='resume from checkpoint', action="store_true")
     parser.add_argument('--master_port', help='specify a port', required=True)
     parser.add_argument('--title'      , help='choose a title for your wandb/log process', required=True)
 
@@ -106,7 +104,9 @@ def train(gpu, args):
     if config.SCHEDULER == 'ReduceLROnPlateau':
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, verbose=True)
     else:
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, config.EPOCHS * len(train_loader), eta_min=0)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader), eta_min=0)
+    
+    torch.autograd.set_detect_anomaly(True)
     
     model.train()
     while epoch <= config.EPOCHS:
@@ -142,6 +142,16 @@ def train(gpu, args):
                 tepoch.set_postfix(loss=loss.item())
                 wandb.log({"loss": loss.item()})
                 wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
+
+                if j % 100000 == 0:
+                    print("Saving temporary checkpoint for epoch:", epoch, "iteration:", j)
+                    TMP_CKPT_DIR = PATH +'/Epoch_'+ str(epoch) +'_Iter_'+ str(j) + '.pth'
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.module.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': loss,
+                        }, TMP_CKPT_DIR)
 
         print("Saving checkpoint for epoch:", epoch)
         CKPT_DIR = PATH +'/Epoch_'+str(epoch)+'.pth'

@@ -57,11 +57,12 @@ class EfficientDetBackbone(nn.Module):
 
         self.up_final2 = nn.ConvTranspose2d(44, 44, kernel_size=2, stride=2)  
         
-        self.conv_final2 = nn.Sequential(
-            nn.Conv2d(44, 32, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-        )
+        # self.conv_final2 = nn.Sequential(
+        #     nn.Conv2d(44, 32, kernel_size=3, padding=1, bias=False),
+        #     nn.BatchNorm2d(32),
+        #     nn.ReLU(inplace=True),
+        # )
+        self.fc = nn.Linear(44, 32)
     
     def freeze_bn(self):
         for m in self.modules():
@@ -79,19 +80,15 @@ class EfficientDetBackbone(nn.Module):
         p5 = self.up5(p5)
 
         features = (p3, p4, p5)
-        # print("features back")
-        # for f in features:
-        #     print(f.shape)
 
         features = self.bifpn(features)
-        # print("features")
-        # for f in features:
-        #     print(f.shape)
 
         x = self.up_final1(features[0])
         x = self.conv_final1(x)
         x = self.up_final2(x)
-        x = self.conv_final2(x)
+        x = torch.permute(x, (0, 2, 3, 1))
+        x = self.fc(x)
+        x = torch.permute(x, (0, 3, 1, 2))
         return x 
 
     def init_backbone(self, path):
@@ -101,3 +98,15 @@ class EfficientDetBackbone(nn.Module):
             print(ret)
         except RuntimeError as e:
             print('Ignoring ' + str(e) + '"')
+
+def main():
+    device =  'cuda:0'
+    model = EfficientDetBackbone(compound_coef=1).to(device)
+
+    x = torch.rand((1, 23, 256, 256)).to(device)
+    y = model(x)
+    print(y.shape)
+
+
+if __name__ == '__main__':
+    main()
