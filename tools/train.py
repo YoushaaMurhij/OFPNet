@@ -20,8 +20,9 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
-from core.models.efficientdet.backbone import EfficientDetBackbone
+# from core.models.efficientdet.backbone import EfficientDetBackbone
 # from core.models.unet_nest import R2AttU_Net
+from core.models.models_mae import  mae_vit_large_patch16_dec512d8b
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import config
@@ -64,8 +65,9 @@ def train(gpu, args):
 
     torch.cuda.set_device(gpu)
     # model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
-    model = EfficientDetBackbone(compound_coef=1).cuda(gpu)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=True)
+    # model = EfficientDetBackbone(compound_coef=1).cuda(gpu)
+    model = mae_vit_large_patch16_dec512d8b().cuda(gpu)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
     print(model)
 
@@ -106,7 +108,7 @@ def train(gpu, args):
     else:
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader), eta_min=0)
     
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     
     model.train()
     while epoch <= config.EPOCHS:
