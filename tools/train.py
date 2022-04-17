@@ -113,7 +113,7 @@ def train(gpu, args):
         epoch += 1
         with tqdm(train_loader, unit = "batch") as tepoch:
             tepoch.set_description(f"Epoch {epoch}")
-
+            TMP_CKPT_SPLT = len(tepoch) // 4
             for j, data in enumerate(tepoch):
                 grids = data['grids'] 
 
@@ -143,8 +143,8 @@ def train(gpu, args):
                 wandb.log({"loss": loss.item()})
                 wandb.log({"learning rate": optimizer.param_groups[0]['lr']})
 
-                if j % 100000 == 0:
-                    print("Saving temporary checkpoint for epoch:", epoch, "iteration:", j)
+                if j % TMP_CKPT_SPLT == 0 and j:
+                    print("Saving temporary checkpoint for epoch:", epoch, ", iteration:", j)
                     TMP_CKPT_DIR = PATH +'/Epoch_'+ str(epoch) +'_Iter_'+ str(j) + '.pth'
                     torch.save({
                         'epoch': epoch,
