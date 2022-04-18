@@ -16,7 +16,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def main():
+def main(args):
 
     test_shard_paths = sorted(tf.io.gfile.glob(config.VAL_FILES))
 
