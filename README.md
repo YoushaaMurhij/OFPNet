@@ -36,5 +36,5 @@ export PYTHONPATH="${PYTHONPATH}:/path/to/Occ_Flow_Pred/"
 ## TODOs:
 - [ ] add visualizer
 - [ ] add eval script
-- [ ] replace tqpm 
-- [ ] forward time + total 
+- [ ] validate locally 
+- [ ] determine learning rate
