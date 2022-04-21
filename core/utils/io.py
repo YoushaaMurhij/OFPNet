@@ -1,7 +1,8 @@
 import torch
 import tensorflow as tf
 from collections import defaultdict
-from configs import config
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
 from waymo_open_dataset.utils import occupancy_flow_grids
 
 def make_model_inputs(
@@ -38,9 +39,9 @@ def get_pred_waypoint_logits(model_outputs):
     pred_waypoint_logits['vehicles']['flow'] = []
 
     # Slice channels into output predictions.
-    for k in range(config.NUM_WAYPOINTS):
-        index = k * config.NUM_PRED_CHANNELS
-        waypoint_channels = model_outputs[:, :, :, index:index + config.NUM_PRED_CHANNELS]
+    for k in range(cfg.NUM_WAYPOINTS):
+        index = k * cfg.NUM_PRED_CHANNELS
+        waypoint_channels = model_outputs[:, :, :, index:index + cfg.NUM_PRED_CHANNELS]
         pred_observed_occupancy = waypoint_channels[:, :, :, :1]
         pred_occluded_occupancy = waypoint_channels[:, :, :, 1:2]
         pred_flow = waypoint_channels[:, :, :, 2:]

@@ -25,15 +25,17 @@ from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.models_mae import  mae_vit_large_patch16_dec512d8b
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
-from configs import config
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
+
 
 os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
-os.environ["WANDB_MODE"]    = config.WANDB_MODE
+os.environ["WANDB_MODE"]    = cfg.WANDB_MODE
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
-    parser.add_argument("--pretrained" , default="/logs/Epoch_4.pth", help="Use pre-trained models")
+    parser.add_argument("--pretrained" , default="./pretrained/Epoch_5.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir'   , default='/home/workspace/Occ_Flow_Pred/logs/train_data/', help='path where to save output models and logs')
     parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
     parser.add_argument('-g', '--gpus' , default=1, type=int, help='number of gpus per node')
@@ -55,8 +57,8 @@ def train(gpu, args):
     	world_size=args.world_size,                              
     	rank=rank                                               
     )    
-
     wandb.config.update(args)
+    wandb.config.update(cfg)
 
     save_str = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + args.title
     PATH = os.path.join(args.save_dir, save_str)
@@ -64,18 +66,17 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    # model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).cuda(gpu)
+    # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).cuda(gpu)
     # model = EfficientDetBackbone(compound_coef=1).cuda(gpu)
     model = mae_vit_large_patch16_dec512d8b().cuda(gpu)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
     print(model)
 
-    if config.OPTIMIZER == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), lr=config.LR)
+    if cfg.OPTIMIZER == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=cfg.LR)
     else:
-        optimizer = optim.SGD(model.parameters(), weight_decay = config.WEIGHT_DECAY, lr=config.LR, momentum=config.MOMENTUM)
-
+        optimizer = optim.SGD(model.parameters(), weight_decay = cfg.WEIGHT_DECAY, lr=cfg.LR, momentum=cfg.MOMENTUM)
     epoch = 0
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
@@ -87,8 +88,7 @@ def train(gpu, args):
 
         print(f'Weights are loaded from: {args.pretrained}.')
 
-    dataset = WaymoOccupancyFlowDataset(data_dir=config.DATASET_PKL_FOLDER, gpu=gpu) 
-
+    dataset = WaymoOccupancyFlowDataset(data_dir=cfg.DATASET_PKL_FOLDER, gpu=gpu) 
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         dataset,
         num_replicas=args.world_size, 
@@ -96,22 +96,22 @@ def train(gpu, args):
 
     train_loader = torch.utils.data.DataLoader(
         dataset=dataset,
-        batch_size=config.TRAIN_BATCH_SIZE,
+        batch_size=cfg.TRAIN_BATCH_SIZE,
         shuffle=False,     
         num_workers=0,
         pin_memory=False,
         sampler=train_sampler)
-
-
-    if config.SCHEDULER == 'ReduceLROnPlateau':
+    if cfg.SCHEDULER == 'GetInitLR':
+        scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer, factor=0.3333333333333333, total_iters=5, last_epoch=- 1, verbose=False)
+    elif cfg.SCHEDULER == 'ReduceLROnPlateau':
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, verbose=True)
-    else:
+    elif cfg.SCHEDULER == 'CosineAnnealingLR':
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader), eta_min=0)
-    
+    else:
+        raise AttributeError("This scheduler is not implemented ")
     # torch.autograd.set_detect_anomaly(True)
-    
     model.train()
-    while epoch <= config.EPOCHS:
+    while epoch <= cfg.EPOCHS:
         epoch += 1
         with tqdm(train_loader, unit = "batch") as tepoch:
             tepoch.set_description(f"Epoch {epoch}")
@@ -122,7 +122,6 @@ def train(gpu, args):
                 true_waypoints = data['waypoints']
                 # for key in true_waypoints["vehicles"].keys():
                 #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
-            
                 optimizer.zero_grad()
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)

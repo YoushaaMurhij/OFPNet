@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
-from configs import config
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
+
 def Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits):
     """Loss function.
 
@@ -22,7 +24,7 @@ def Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits):
     loss_dict['flow'] = []
 
     # Iterate over waypoints.
-    for k in range(config.NUM_WAYPOINTS):
+    for k in range(cfg.NUM_WAYPOINTS):
         # Occupancy cross-entropy loss.
         pred_observed_occupancy_logit = (pred_waypoint_logits['vehicles']['observed_occupancy'][k])
         pred_occluded_occupancy_logit = (pred_waypoint_logits['vehicles']['occluded_occupancy'][k])
@@ -39,9 +41,9 @@ def Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits):
         loss_dict['flow'].append(_flow_loss(pred_flow, true_flow))
 
     # Mean over waypoints.
-    loss_dict['observed_xe'] = (sum(loss_dict['observed_xe']) / config.NUM_WAYPOINTS)
-    loss_dict['occluded_xe'] = (sum(loss_dict['occluded_xe']) / config.NUM_WAYPOINTS)
-    loss_dict['flow']        = sum(loss_dict['flow']) / config.NUM_WAYPOINTS
+    loss_dict['observed_xe'] = (sum(loss_dict['observed_xe']) / cfg.NUM_WAYPOINTS)
+    loss_dict['occluded_xe'] = (sum(loss_dict['occluded_xe']) / cfg.NUM_WAYPOINTS)
+    loss_dict['flow']        = sum(loss_dict['flow']) / cfg.NUM_WAYPOINTS
 
     return loss_dict
 

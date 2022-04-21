@@ -15,7 +15,8 @@ from waymo_open_dataset.utils import occupancy_flow_grids
 
 from core.models.unet_nest import R2AttU_Net
 from core.utils.io import make_model_inputs, get_pred_waypoint_logits
-from configs import config    #TODO remove it and replace it with challenge configs
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
 
 DEVICE = 'cuda:0'
 PRETRAINED = "/home/workspace/Occ_Flow_Pred/pretrained/Epoch_3.pth"
@@ -23,7 +24,7 @@ PRETRAINED = "/home/workspace/Occ_Flow_Pred/pretrained/Epoch_3.pth"
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
-model = R2AttU_Net(in_ch=config.INPUT_SIZE, out_ch=config.NUM_CLASSES, t=6).to(DEVICE)
+model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
 checkpoint = torch.load(PRETRAINED, map_location='cpu')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
@@ -122,7 +123,7 @@ def save_submission_to_file(
 
     """Save predictions for one test shard as a binary protobuf."""
 
-    save_folder = os.path.join(config.DATASET_FOLDER,
+    save_folder = os.path.join(cfg.DATASET_FOLDER,
                                 'occupancy_flow_challenge/validation')
     os.makedirs(save_folder, exist_ok=True)
     basename = os.path.basename(test_shard_path)
