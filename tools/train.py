@@ -28,7 +28,6 @@ from core.utils.io import get_pred_waypoint_logits
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
 
-
 os.environ["WANDB_API_KEY"] = 'cccdc2dfb027090440d22b2ea4b94d57b9724115'
 os.environ["WANDB_MODE"]    = cfg.WANDB_MODE
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  

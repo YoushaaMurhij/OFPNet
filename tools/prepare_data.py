@@ -1,10 +1,12 @@
 import os
 import tensorflow as tf
+from tqdm import tqdm
 from google.protobuf import text_format
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
-from waymo_open_dataset.utils import occupancy_flow_grids
-from configs import config as CONFIG
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
+
 import pickle
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -13,14 +15,14 @@ if gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
 def main():
-    filenames = tf.io.gfile.glob(CONFIG.TRAIN_FILES)
+    filenames = tf.io.gfile.glob(cfg.TRAIN_FILES)
     
     config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
     config_text = """
     num_past_steps: 10
     num_future_steps: 80
     num_waypoints: 8
-    cumulative_waypoints: true
+    cumulative_waypoints: false
     normalize_sdc_yaw: true
     grid_height_cells: 256
     grid_width_cells: 256
@@ -34,15 +36,15 @@ def main():
     print("Used configs:")
     print(config)
     print("Started Converting to numpy pkls...")
-    for i, filename in enumerate(filenames):
+    for filename in tqdm(filenames):
         dataset = tf.data.TFRecordDataset(filename, compression_type='')
         dataset = dataset.map(occupancy_flow_data.parse_tf_example)
         dataset = dataset.batch(1)
-        print('processing frames from scene #' + str(i))
-        for j, inputs in enumerate(dataset):
+        # print('processing frames from scene #' + str(i))
+        for inputs in tqdm(dataset, leave=False):
             ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
 
-            with open(CONFIG.DATASET_PKL_FOLDER + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
+            with open(cfg.DATASET_PKL_FOLDER + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
                 pickle.dump(inputs, f)
     
     print("Done Converting to numpy pkls...")

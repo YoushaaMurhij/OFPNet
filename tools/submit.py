@@ -1,8 +1,8 @@
 import argparse
 import tensorflow as tf
 from core.utils.submission import *
-from configs import config
-
+from configs import hyperparameters
+cfg = hyperparameters.get_config()
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
@@ -18,9 +18,9 @@ def parse_args():
 
 def main(args):
 
-    test_shard_paths = sorted(tf.io.gfile.glob(config.VAL_FILES))
+    test_shard_paths = sorted(tf.io.gfile.glob(cfg.VAL_FILES))
 
-    with tf.io.gfile.GFile(config.VAL_SCENARIO_IDS_FILE) as f:
+    with tf.io.gfile.GFile(cfg.VAL_SCENARIO_IDS_FILE) as f:
         test_scenario_ids = f.readlines()
         test_scenario_ids = [id.rstrip() for id in test_scenario_ids]
 
@@ -42,10 +42,6 @@ def main(args):
 
         save_submission_to_file(
             submission=submission, test_shard_path=test_shard_path)
-
-        # if i == 0:
-        #     print('Sample scenario prediction:\n')
-        #     print(submission.scenario_predictions[-1])
 
 if __name__ == "__main__":
     args = parse_args()
