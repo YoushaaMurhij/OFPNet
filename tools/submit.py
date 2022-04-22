@@ -41,7 +41,7 @@ def main(args):
             shard_message=f'{i + 1} of {len(test_shard_paths)}')
 
         save_submission_to_file(
-            submission=submission, test_shard_path=test_shard_path)
+            submission=submission, test_shard_path=test_shard_path, folder=args.method)
 
 if __name__ == "__main__":
     args = parse_args()

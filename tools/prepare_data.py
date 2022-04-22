@@ -41,7 +41,7 @@ def main():
         dataset = dataset.map(occupancy_flow_data.parse_tf_example)
         dataset = dataset.batch(1)
         # print('processing frames from scene #' + str(i))
-        for inputs in tqdm(dataset, leave=False):
+        for inputs in dataset:
             ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
 
             with open(cfg.DATASET_PKL_FOLDER + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 

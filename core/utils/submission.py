@@ -14,17 +14,22 @@ from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
 
 from core.models.unet_nest import R2AttU_Net
+from core.models.models_mae import  mae_vit_large_patch16_dec512d8b
+from core.models.efficientdet.backbone import EfficientDetBackbone
+
 from core.utils.io import make_model_inputs, get_pred_waypoint_logits
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
 
 DEVICE = 'cuda:0'
-PRETRAINED = "/home/workspace/Occ_Flow_Pred/pretrained/Epoch_3.pth"
+PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/train_data/20220422_001129_MAE_AutoEncoder_lr/Epoch_1_Iter_7608.pth" 
 
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
-model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
+# model = EfficientDetBackbone(compound_coef=1).to(DEVICE)
+model = mae_vit_large_patch16_dec512d8b().to(DEVICE)
+# model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
 checkpoint = torch.load(PRETRAINED, map_location='cpu')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
@@ -119,12 +124,13 @@ def generate_predictions_for_one_test_shard(
 
 def save_submission_to_file(
     submission: occupancy_flow_submission_pb2.ChallengeSubmission,
-    test_shard_path: str,) -> None:
+    test_shard_path: str,
+    folder: str) -> None:
 
     """Save predictions for one test shard as a binary protobuf."""
 
     save_folder = os.path.join(cfg.DATASET_FOLDER,
-                                'occupancy_flow_challenge/validation')
+                                'occupancy_flow_challenge/validation', folder)
     os.makedirs(save_folder, exist_ok=True)
     basename = os.path.basename(test_shard_path)
     if 'validation_tfexample.tfrecord' not in basename:
