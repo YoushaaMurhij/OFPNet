@@ -10,14 +10,10 @@
 # --------------------------------------------------------
 
 from functools import partial
-
 import torch
 import torch.nn as nn
-
 from timm.models.vision_transformer import PatchEmbed, Block
-
 from core.models.pos_embed import get_2d_sincos_pos_embed
-
 
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
@@ -260,9 +256,9 @@ mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blo
 
 
 def main():
-    model = mae_vit_large_patch16_dec512d8b().cuda(0)
+    model = mae_vit_base_patch16_dec512d8b().cuda(0)
+    # model = mae_vit_large_patch16_dec512d8b().cuda(0)
     model.eval()
-    # print(model)
     x = torch.rand((1, 23, 256, 256)).cuda(0)
 
     y = model(x)
