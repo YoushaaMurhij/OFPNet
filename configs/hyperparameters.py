@@ -44,7 +44,7 @@ def get_config():
     # Optimization:            
     cfg.OPTIMIZER                    = 'adamw'
     cfg.SCHEDULER                    = 'CosineAnnealingLR' # 'CosineAnnealingLR' , GetInitLR, ReduceLROnPlateau
-    cfg.TRAIN_BATCH_SIZE             = 4
+    cfg.TRAIN_BATCH_SIZE             = 16
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
     cfg.EPOCHS                       = 4
@@ -56,7 +56,7 @@ def get_config():
     cfg.num_past_steps               = 10
     cfg.num_future_steps             = 80
     cfg.NUM_WAYPOINTS                = 8
-    cfg.cumulative_waypoints         = True
+    cfg.cumulative_waypoints         = False
     cfg.normalize_sdc_yaw            = True
     cfg.grid_height_cells            = 256
     cfg.grid_width_cells             = 256

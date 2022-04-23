@@ -13,28 +13,15 @@ from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from waymo_open_dataset.utils import occupancy_flow_grids
 
-from core.models.unet_nest import R2AttU_Net
-from core.models.models_mae import  mae_vit_large_patch16_dec512d8b
-from core.models.efficientdet.backbone import EfficientDetBackbone
-
 from core.utils.io import make_model_inputs, get_pred_waypoint_logits
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
 
 DEVICE = 'cuda:0'
-PRETRAINED = "/home/workspace/Occ_Flow_Pred/logs/train_data/20220422_001129_MAE_AutoEncoder_lr/Epoch_1_Iter_7608.pth" 
-
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
-# model = EfficientDetBackbone(compound_coef=1).to(DEVICE)
-model = mae_vit_large_patch16_dec512d8b().to(DEVICE)
-# model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
-checkpoint = torch.load(PRETRAINED, map_location='cpu')
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
-
-def run_model_on_inputs(inputs):
+def run_model_on_inputs(model, inputs):
 
     """Preprocesses inputs and runs model on one batch."""
 
@@ -101,15 +88,16 @@ def generate_predictions_for_one_test_shard(
     submission: occupancy_flow_submission_pb2.ChallengeSubmission,
     test_dataset: tf.data.Dataset,
     test_scenario_ids: Sequence[str],
-    shard_message: str) -> None:
+    shard_message: str,
+    model) -> None:
 
     """Iterate over all test examples in one shard and generate predictions."""
 
     for i, inputs in enumerate(test_dataset):
         if inputs['scenario/id'] in test_scenario_ids:
-            print(f'Processing test shard {shard_message}, example {i}...')
+            # print(f'Processing test shard {shard_message}, example {i}...')
             # Run inference.
-            pred_waypoint_logits = run_model_on_inputs(inputs=inputs)
+            pred_waypoint_logits = run_model_on_inputs(model=model, inputs=inputs)
             pred_waypoints = apply_sigmoid_to_occupancy_logits(pred_waypoint_logits)
 
             # Make new scenario prediction message.
@@ -138,9 +126,9 @@ def save_submission_to_file(
     submission_basename = basename.replace('validation_tfexample.tfrecord',
                                             'occupancy_flow_submission.binproto')
     submission_shard_file_path = os.path.join(save_folder, submission_basename)
-    num_scenario_predictions = len(submission.scenario_predictions)
-    print(f'Saving {num_scenario_predictions} scenario predictions to '
-            f'{submission_shard_file_path}...\n')
+    # num_scenario_predictions = len(submission.scenario_predictions)
+    # print(f'Saving {num_scenario_predictions} scenario predictions to '
+    #         f'{submission_shard_file_path}...\n')
     f = open(submission_shard_file_path, 'wb')
     f.write(submission.SerializeToString())
     f.close()
