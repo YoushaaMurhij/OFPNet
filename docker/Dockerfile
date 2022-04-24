@@ -17,7 +17,7 @@ RUN python3 -m pip install numpy matplotlib tqdm waymo_open_dataset_tf_2_6_0==1.
 # Install latest pytorch
 RUN pip3 install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113
 
-RUN pip3 install wandb
+RUN pip3 install wandb timm
 
 ARG WORKSPACE
 # COPY . ${WORKSPACE}

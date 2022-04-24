@@ -13,7 +13,7 @@ DOCKER_OPTS = \
 	-d \
 	--rm \
 	-e DISPLAY=${DISPLAY} \
-	--gpus '"device= 1"' \
+	--gpus '"device= 0"' \
 	-e "NVIDIA_DRIVER_CAPABILITIES=all" \
 	-e "QT_X11_NO_MITSHM=1" \
 	-v /tmp/.X11-unix:/tmp/.X11-unix:rw \
@@ -48,18 +48,18 @@ MPI_CMD=mpirun \
 		-mca plm_rsh_args 'p 12345' \
 		--allow-run-as-root
 
-docker-build:
+build:
 	docker build \
 	$(DOCKER_BUILD_ARGS) \
 	-f ./docker/$(DOCKERFILE) \
 	-t $(DOCKER_IMAGE) .
 
-docker-start:
+start:
 	docker run --name $(PROJECT) \
 	$(DOCKER_OPTS) \
 	$(DOCKER_IMAGE)
 
-docker-into:
+into:
 	docker exec -it $(PROJECT) /bin/bash -c \
     "cd $(WORKSPACE); nvidia-smi;/bin/bash"
 
