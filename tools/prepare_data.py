@@ -1,22 +1,38 @@
 import os
-import tensorflow as tf
+import pickle
+import argparse
 from tqdm import tqdm
+import tensorflow as tf
 from google.protobuf import text_format
 from waymo_open_dataset.protos import occupancy_flow_metrics_pb2
 from waymo_open_dataset.utils import occupancy_flow_data
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
 
-import pickle
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
-def main():
-    filenames = tf.io.gfile.glob(cfg.TRAIN_FILES)
-    
+def parse_args():
+    parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Dataset Preparing')
+    parser.add_argument('--split', help='Choose train or val')
+    args = parser.parse_args()
+    return args
+
+def main(args):
+
+    split = args.split
+    assert split == 'train' or split == 'val' , "Invalid Split Name"
+    if args.split == 'train':
+        filenames = tf.io.gfile.glob(cfg.TRAIN_FILES)
+        SAVE_PATH = cfg.DATASET_PKL_FOLDER
+    else:
+        filenames = tf.io.gfile.glob(cfg.VAL_FILES)
+        SAVE_PATH = cfg.VALSET_PKL_FOLDER
+
+    os.makedirs(SAVE_PATH, exist_ok=True)
     config = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
     config_text = """
     num_past_steps: 10
@@ -44,10 +60,11 @@ def main():
         for inputs in dataset:
             ID = inputs['scenario/id'].numpy()[0].decode("utf-8")
 
-            with open(cfg.DATASET_PKL_FOLDER + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
+            with open(SAVE_PATH + filename.split('-')[-3] + '_' +  ID + '.pkl','wb') as f: 
                 pickle.dump(inputs, f)
     
     print("Done Converting to numpy pkls...")
         
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

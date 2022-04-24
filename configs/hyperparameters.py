@@ -32,7 +32,8 @@ def get_config():
     cfg.TEST_FILES     = f'{cfg.DATASET_FOLDER}/tf_example/testing/testing_tfexample.tfrecord*'
     cfg.SAMPLE_FILES   = f'{cfg.DATASET_FOLDER}/tf_example/sample/training_tfexample.tfrecord*'
 
-    cfg.DATASET_PKL_FOLDER =  f'{cfg.DATASET_FOLDER}/pkl_example/training/'
+    cfg.DATASET_PKL_FOLDER = f'{cfg.DATASET_FOLDER}/pkl_example/training/'
+    cfg.VALSET_PKL_FOLDER  = f'{cfg.DATASET_FOLDER}/pkl_example/validation/'
     # Text files containing validation and test scenario IDs for this challenge.
     cfg.VAL_SCENARIO_IDS_FILE  = f'{cfg.DATASET_FOLDER}/occupancy_flow_challenge/validation_scenario_ids.txt'
     cfg.TEST_SCENARIO_IDS_FILE = f'{cfg.DATASET_FOLDER}/occupancy_flow_challenge/testing_scenario_ids.txt'
@@ -48,7 +49,7 @@ def get_config():
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
     cfg.EPOCHS                       = 4
-    cfg.LR                           = 0.001
+    cfg.LR                           = 0.000002
     cfg.MOMENTUM                     = 0.8
 
     # Grid sequence parameters:
