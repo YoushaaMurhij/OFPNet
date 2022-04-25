@@ -1,7 +1,7 @@
 num_past_steps: 10
 num_future_steps: 80
 num_waypoints: 8
-cumulative_waypoints: true
+cumulative_waypoints: false
 normalize_sdc_yaw: true
 grid_height_cells: 256
 grid_width_cells: 256
