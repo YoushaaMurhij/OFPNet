@@ -260,7 +260,7 @@ def occupancy_rgb_image(agent_grids, roadgraph_image, gamma: float = 1.6):
     ones  = torch.ones_like(zeros)
 
     agents = agent_grids
-    veh = zeros if agents['vehicles'] is None else agents['vehicles']
+    veh = zeros if agents['vehicles'] is None else torch.squeeze(agents['vehicles'], -1)
     ped = zeros if agents['pedestrians'] is None else agents['pedestrians']
     cyc = zeros if agents['cyclists'] is None else agents['cyclists']
 
@@ -317,12 +317,12 @@ def get_observed_occupancy_at_waypoint(waypoints, k: int):
     """
     Returns occupancies of currently-observed agents at waypoint k.
     """
-    agent_grids = {}
+    agent_grids = {'vehicles': None, 'pedestrians': None, 'cyclists' : None}
     if waypoints['vehicles']['observed_occupancy']:
       agent_grids['vehicles'] = waypoints['vehicles']['observed_occupancy'][k]
-    if waypoints['pedestrians']['observed_occupancy']:
+    if waypoints['pedestrians'] and waypoints['pedestrians']['observed_occupancy']:
       agent_grids['pedestrians'] = waypoints['pedestrians']['observed_occupancy'][k]
-    if waypoints['cyclists']['observed_occupancy']:
+    if waypoints['cyclists'] and waypoints['cyclists']['observed_occupancy']:
       agent_grids['cyclists'] = waypoints['cyclists']['observed_occupancy'][k]
     return agent_grids
 
@@ -330,12 +330,12 @@ def get_occluded_occupancy_at_waypoint(waypoints, k: int):
     """
     Returns occupancies of currently-occluded agents at waypoint k.
     """
-    agent_grids = {}
+    agent_grids = {'vehicles': None, 'pedestrians': None, 'cyclists' : None}
     if waypoints['vehicles']['occluded_occupancy']:
       agent_grids['vehicles'] = waypoints['vehicles']['occluded_occupancy'][k]
-    if waypoints['pedestrians']['occluded_occupancy']:
+    if waypoints['pedestrians'] and waypoints['pedestrians']['occluded_occupancy']:
       agent_grids['pedestrians'] = waypoints['pedestrians']['occluded_occupancy'][k]
-    if waypoints['cyclists']['occluded_occupancy']:
+    if waypoints['cyclists'] and waypoints['cyclists']['occluded_occupancy']:
       agent_grids['cyclists'] = waypoints['cyclists']['occluded_occupancy'][k]
     return agent_grids
 
@@ -343,11 +343,11 @@ def get_flow_at_waypoint(waypoints, k: int):
     """
     Returns flow fields of all agents at waypoint k.
     """
-    agent_grids = {}
+    agent_grids = {'vehicles': None, 'pedestrians': None, 'cyclists' : None}
     if waypoints['vehicles']['flow']:
       agent_grids['vehicles'] = waypoints['vehicles']['flow'][k]
-    if waypoints['pedestrians']['flow']:
+    if waypoints['pedestrians'] and waypoints['pedestrians']['flow']:
       agent_grids['pedestrians'] = waypoints['pedestrians']['flow'][k]
-    if waypoints['cyclists']['flow']:
+    if waypoints['cyclists'] and waypoints['cyclists']['flow']:
       agent_grids['cyclists'] = waypoints['cyclists']['flow'][k]
     return agent_grids
