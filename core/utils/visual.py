@@ -260,7 +260,7 @@ def occupancy_rgb_image(agent_grids, roadgraph_image, gamma: float = 1.6):
     ones  = torch.ones_like(zeros)
 
     agents = agent_grids
-    veh = zeros if agents['vehicles'] is None else torch.squeeze(agents['vehicles'], -1)
+    veh = zeros if agents['vehicles'] is None else agents['vehicles'] # torch.permute(agents['vehicles'], (0, 3, 1, 2)) #torch.squeeze(agents['vehicles'], -1)
     ped = zeros if agents['pedestrians'] is None else agents['pedestrians']
     cyc = zeros if agents['cyclists'] is None else agents['cyclists']
 

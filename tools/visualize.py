@@ -1,16 +1,16 @@
 import os
-import json
 import argparse
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
+from matplotlib.animation import PillowWriter
 import torch
 from torch.utils.data import DataLoader
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_nest import R2AttU_Net
-from core.utils.visual import get_observed_occupancy_at_waypoint, occupancy_rgb_image, create_animation
-from core.utils.io import get_pred_waypoint_logits
+from core.utils.visual import *
 from core.utils.submission import apply_sigmoid_to_occupancy_logits
+from core.utils.io import get_pred_waypoint_logits
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
 
@@ -39,16 +39,30 @@ def main(args):
     dataset = WaymoOccupancyFlowDataset(data_dir=cfg.VALSET_PKL_FOLDER, gpu=int(args.gpu))
     validation_loader = DataLoader(dataset=dataset, batch_size=cfg.VAL_BATCH_SIZE)
     counter = 0
+
+    PAD = torch.zeros((1, 256, 3))
+    PAD_H = torch.zeros((513, 1, 3))
     for data in tqdm(validation_loader):
         grids = data['grids'] 
         true_waypoints = data['waypoints']
 
         model_outputs = model(grids)
         pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
-
         pred_waypoints = apply_sigmoid_to_occupancy_logits(pred_waypoint_logits)
-        images = []
+        
         roadgraph = grids[:, 0 ,: , :]
+        roadgraph = roadgraph[None, :]
+        roadgraph = torch.permute(roadgraph, (0, 2, 3, 1))
+
+        pred_observed_occupancy_images = []
+        true_observed_occupancy_images = []
+        comb_observed_occupancy_images = []
+        pred_occluded_occupancy_images = []
+        true_occluded_occupancy_images = []
+        comb_occluded_occupancy_images = []
+        pred_flow_images = []
+        true_flow_images = []
+        comb_flow_images = []
 
         for k in range(cfg.NUM_WAYPOINTS):
             observed_occupancy_grids = get_observed_occupancy_at_waypoint(pred_waypoints, k)
@@ -56,11 +70,72 @@ def main(args):
                 agent_grids=observed_occupancy_grids,
                 roadgraph_image=roadgraph,
             )
-            images.append(observed_occupancy_rgb[0].detach().cpu())
+            pred_observed_occupancy_images.append(observed_occupancy_rgb[0].detach().cpu())
 
-        anim = create_animation(images, interval=200)
-        # HTML(anim.to_html5_video())
-        anim.save(os.path.join(PATH, str(counter) + '.gif'), writer = 'Pillow', fps=10)
+        for k in range(cfg.NUM_WAYPOINTS):
+            true_waypoints['pedestrians'] = None
+            true_waypoints['cyclists'] = None
+            observed_occupancy_grids = get_observed_occupancy_at_waypoint(true_waypoints, k)
+            observed_occupancy_rgb = occupancy_rgb_image(
+                agent_grids=observed_occupancy_grids,
+                roadgraph_image=roadgraph,
+            )
+            true_observed_occupancy_images.append(observed_occupancy_rgb[0].detach().cpu())
+
+        for im1, im2 in zip(pred_observed_occupancy_images, true_observed_occupancy_images):
+            comb_observed_occupancy_images.append(torch.concat([im1, PAD, im2], axis=0))
+
+
+        for k in range(cfg.NUM_WAYPOINTS):
+            occluded_occupancy_grids = get_occluded_occupancy_at_waypoint(pred_waypoints, k)
+            occluded_occupancy_rgb = occupancy_rgb_image(
+                agent_grids=occluded_occupancy_grids,
+                roadgraph_image=roadgraph,
+            )
+            pred_occluded_occupancy_images.append(occluded_occupancy_rgb[0].detach().cpu())
+ 
+        for k in range(cfg.NUM_WAYPOINTS):
+            true_waypoints['pedestrians'] = None
+            true_waypoints['cyclists'] = None
+            occluded_occupancy_grids = get_occluded_occupancy_at_waypoint(true_waypoints, k)
+            occluded_occupancy_rgb = occupancy_rgb_image(
+                agent_grids=occluded_occupancy_grids,
+                roadgraph_image=roadgraph,
+            )
+            true_occluded_occupancy_images.append(occluded_occupancy_rgb[0].detach().cpu())
+        
+        for im1, im2 in zip(pred_occluded_occupancy_images, true_occluded_occupancy_images):
+            comb_occluded_occupancy_images.append(torch.concat([im1, PAD, im2], axis=0))
+
+        # for k in range(cfg.NUM_WAYPOINTS):
+        #     flow_grids = get_flow_at_waypoint(pred_waypoints, k)
+        #     flow_rgb = occupancy_rgb_image(
+        #         agent_grids=flow_grids,
+        #         roadgraph_image=roadgraph,
+        #     )
+        #     pred_flow_images.append(flow_rgb[0].detach().cpu())
+ 
+        # for k in range(cfg.NUM_WAYPOINTS):
+        #     true_waypoints['pedestrians'] = None
+        #     true_waypoints['cyclists'] = None
+        #     flow_grids = get_flow_at_waypoint(true_waypoints, k)
+        #     flow_rgb = occupancy_rgb_image(
+        #         agent_grids=flow_grids,
+        #         roadgraph_image=roadgraph,
+        #     )
+        #     true_flow_images.append(flow_rgb[0].detach().cpu())
+
+        # for im1, im2 in zip(pred_flow_images, true_flow_images):
+        #     comb_flow_images.append(torch.concat([im1, PAD, im2], axis=0))
+
+        
+        all_images = []
+        for im1, im2 in zip(comb_observed_occupancy_images, comb_occluded_occupancy_images):
+            all_images.append(torch.concat([im1, PAD_H, im2], axis=1))
+
+
+        anim = create_animation(all_images, interval=200)
+        anim.save(os.path.join(PATH, 'all_' + str(counter) + '.gif'), writer=PillowWriter(fps=5))
 
         counter += 1
      
