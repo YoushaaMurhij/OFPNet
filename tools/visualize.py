@@ -107,31 +107,31 @@ def main(args):
         for im1, im2 in zip(pred_occluded_occupancy_images, true_occluded_occupancy_images):
             comb_occluded_occupancy_images.append(torch.concat([im1, PAD, im2], axis=0))
 
-        # for k in range(cfg.NUM_WAYPOINTS):
-        #     flow_grids = get_flow_at_waypoint(pred_waypoints, k)
-        #     flow_rgb = occupancy_rgb_image(
-        #         agent_grids=flow_grids,
-        #         roadgraph_image=roadgraph,
-        #     )
-        #     pred_flow_images.append(flow_rgb[0].detach().cpu())
+        for k in range(cfg.NUM_WAYPOINTS):
+            flow_grids = get_flow_at_waypoint(pred_waypoints, k)
+            flow_rgb = flow_rgb_image(
+                flow=flow_grids['vehicles'],
+                roadgraph_image=roadgraph,
+            )
+            pred_flow_images.append(flow_rgb[0].detach().cpu())
  
-        # for k in range(cfg.NUM_WAYPOINTS):
-        #     true_waypoints['pedestrians'] = None
-        #     true_waypoints['cyclists'] = None
-        #     flow_grids = get_flow_at_waypoint(true_waypoints, k)
-        #     flow_rgb = occupancy_rgb_image(
-        #         agent_grids=flow_grids,
-        #         roadgraph_image=roadgraph,
-        #     )
-        #     true_flow_images.append(flow_rgb[0].detach().cpu())
+        for k in range(cfg.NUM_WAYPOINTS):
+            true_waypoints['pedestrians'] = None
+            true_waypoints['cyclists'] = None
+            flow_grids = get_flow_at_waypoint(true_waypoints, k)
+            flow_rgb = flow_rgb_image(
+                flow=flow_grids['vehicles'],
+                roadgraph_image=roadgraph,
+            )
+            true_flow_images.append(flow_rgb[0].detach().cpu())
 
-        # for im1, im2 in zip(pred_flow_images, true_flow_images):
-        #     comb_flow_images.append(torch.concat([im1, PAD, im2], axis=0))
+        for im1, im2 in zip(pred_flow_images, true_flow_images):
+            comb_flow_images.append(torch.concat([im1, PAD, im2], axis=0))
 
         
         all_images = []
-        for im1, im2 in zip(comb_observed_occupancy_images, comb_occluded_occupancy_images):
-            all_images.append(torch.concat([im1, PAD_H, im2], axis=1))
+        for im1, im2, im3 in zip(comb_observed_occupancy_images, comb_occluded_occupancy_images, comb_flow_images):
+            all_images.append(torch.concat([im1, PAD_H, im2, PAD_H, im3], axis=1))
 
 
         anim = create_animation(all_images, interval=200)

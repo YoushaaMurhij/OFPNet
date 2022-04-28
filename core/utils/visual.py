@@ -2,6 +2,7 @@ import uuid
 import torch
 import numpy as np
 import tensorflow as tf
+import math
 
 from IPython.display import HTML
 import matplotlib.animation as animation
@@ -288,30 +289,30 @@ def occupancy_rgb_image(agent_grids, roadgraph_image, gamma: float = 1.6):
 
 
 def _alpha_blend(fg, bg, fg_a = None, bg_a = None):
-  """
-  Overlays foreground and background image with custom alpha values.
-  Implements alpha compositing using Porter/Duff equations.
-  https://en.wikipedia.org/wiki/Alpha_compositing
-  Works with 1-channel or 3-channel images.
-  If alpha values are not specified, they are set to the intensity of RGB
-  values.
-  Args:
-    fg: Foreground: float32 tensor shaped [batch, grid_height, grid_width, d].
-    bg: Background: float32 tensor shaped [batch, grid_height, grid_width, d].
-    fg_a: Foreground alpha: float32 tensor broadcastable to fg.
-    bg_a: Background alpha: float32 tensor broadcastable to bg.
-  Returns:
-    Output image: tf.float32 tensor shaped [batch, grid_height, grid_width, d].
-    Output alpha: tf.float32 tensor shaped [batch, grid_height, grid_width, d].
-  """
-  if fg_a is None:
-    fg_a = fg
-  if bg_a is None:
-    bg_a = bg
-  eps = 1e-10
-  out_a = fg_a + bg_a * (1 - fg_a)
-  out_rgb = (fg * fg_a + bg * bg_a * (1 - fg_a)) / (out_a + eps)
-  return out_rgb, out_a
+    """
+    Overlays foreground and background image with custom alpha values.
+    Implements alpha compositing using Porter/Duff equations.
+    https://en.wikipedia.org/wiki/Alpha_compositing
+    Works with 1-channel or 3-channel images.
+    If alpha values are not specified, they are set to the intensity of RGB
+    values.
+    Args:
+        fg: Foreground: float32 tensor shaped [batch, grid_height, grid_width, d].
+        bg: Background: float32 tensor shaped [batch, grid_height, grid_width, d].
+        fg_a: Foreground alpha: float32 tensor broadcastable to fg.
+        bg_a: Background alpha: float32 tensor broadcastable to bg.
+    Returns:
+        Output image: tf.float32 tensor shaped [batch, grid_height, grid_width, d].
+        Output alpha: tf.float32 tensor shaped [batch, grid_height, grid_width, d].
+    """
+    if fg_a is None:
+        fg_a = fg
+    if bg_a is None:
+        bg_a = bg
+    eps = 1e-10
+    out_a = fg_a + bg_a * (1 - fg_a)
+    out_rgb = (fg * fg_a + bg * bg_a * (1 - fg_a)) / (out_a + eps)
+    return out_rgb, out_a
 
 def get_observed_occupancy_at_waypoint(waypoints, k: int):
     """
@@ -351,3 +352,134 @@ def get_flow_at_waypoint(waypoints, k: int):
     if waypoints['cyclists'] and waypoints['cyclists']['flow']:
       agent_grids['cyclists'] = waypoints['cyclists']['flow'][k]
     return agent_grids
+
+
+def flow_rgb_image(flow, roadgraph_image, agent_trails=None):
+    """
+    Converts (dx, dy) flow to RGB image.
+    Args:
+        flow: [batch_size, height, width, 2] float32 tensor holding (dx, dy) values.
+        roadgraph_image: Road graph image [batch_size, height, width, 1] float32.
+        agent_trails: [batch_size, height, width, 1] float32 tensor containing
+        rendered trails for all agents over the past and current time frames.
+    Returns:
+        [batch_size, height, width, 3] float32 RGB image.
+    """
+    # Swap x, y for compatibilty with published visualizations.
+    flow = torch.roll(flow, shifts=1, dims=-1)
+    # saturate_magnitude=-1 normalizes highest intensity to largest magnitude.
+    flow_image = _optical_flow_to_rgb(flow, saturate_magnitude=-1)
+    # Add roadgraph.
+    flow_image = _add_grayscale_layer(roadgraph_image, flow_image)  # Black.
+    # Overlay agent trails.
+    # flow_image = _add_grayscale_layer(agent_trails * 0.2, flow_image)  # 0.2 alpha
+
+    return flow_image
+
+
+def _add_grayscale_layer(fg_a, scene_rgb):
+    """
+    Adds a black/gray layer using fg_a as alpha over an RGB image."""
+    # Create a black layer matching dimensions of fg_a.
+    black = torch.zeros_like(fg_a)
+    black = torch.concat([black, black, black], axis=-1)
+    # Add the black layer with transparency over the scene_rgb image.
+    overlay, _ = _alpha_blend(fg=black, bg=scene_rgb, fg_a=fg_a, bg_a=1.0)
+    return overlay
+
+ONE = torch.ones((1)).to('cuda:0')
+
+def _optical_flow_to_hsv(flow, saturate_magnitude = -1.0, name=None):
+    """
+    Visualize an optical flow field in HSV colorspace.
+    This uses the standard color code with hue corresponding to direction of
+    motion and saturation corresponding to magnitude.
+    The attr `saturate_magnitude` sets the magnitude of motion (in pixels) at
+    which the color code saturates. A negative value is replaced with the maximum
+    magnitude in the optical flow field.
+
+    Args:
+        flow: A `Tensor` of type `float32`. A 3-D or 4-D tensor storing (a batch of)
+        optical flow field(s) as flow([batch,] i, j) = (dx, dy). The shape of the
+        tensor is [height, width, 2] or [batch, height, width, 2] for the 4-D
+        case.
+        saturate_magnitude: An optional `float`. Defaults to `-1`.
+        name: A name for the operation (optional).
+
+    Returns:
+        An tf.float32 HSV image (or image batch) of size [height, width, 3]
+        (or [batch, height, width, 3]) compatible with tensorflow color conversion
+        ops. The hue at each pixel corresponds to direction of motion. The
+        saturation at each pixel corresponds to the magnitude of motion relative to
+        the `saturate_magnitude` value. Hue, saturation, and value are in [0, 1].
+    """
+
+    with tf.name_scope(name or 'OpticalFlowToHSV'):
+        
+        flow_shape = flow.shape
+        if len(flow_shape) < 3:
+            raise ValueError('flow must be at least 3-dimensional, got' f' `{flow_shape}`')
+        if flow_shape[-1] != 2:
+            raise ValueError(f'flow must have innermost dimension of 2, got' f' `{flow_shape}`')
+
+        height = flow_shape[-3]
+        width = flow_shape[-2]
+        flow_flat = torch.reshape(flow, (-1, height, width, 2))
+
+        dx = flow_flat[..., 0]
+        dy = flow_flat[..., 1]
+        # [batch_size, height, width]
+        magnitudes = torch.sqrt(torch.square(dx) + torch.square(dy))
+        if saturate_magnitude < 0:
+            # [batch_size, 1, 1]
+            local_saturate_magnitude = torch.amax(magnitudes, dim=(1, 2), keepdim=True)
+        else:
+            local_saturate_magnitude = torch.tensor(saturate_magnitude)
+
+        # Hue is angle scaled to [0.0, 1.0).
+        hue = (torch.remainder(torch.atan2(dy, dx), (2 * math.pi))) / (2 * math.pi)
+        # Saturation is relative magnitude.
+        relative_magnitudes = torch.div(magnitudes, local_saturate_magnitude)
+        saturation = torch.minimum(relative_magnitudes, ONE)  # Larger magnitudes saturate.
+        
+        # Value is fixed.
+        value = torch.ones_like(saturation)
+        hsv_flat = torch.stack((hue, saturation, value), axis=-1)
+
+        return torch.reshape(hsv_flat, (256, 256, 3))   # TODO dont hardcore grid size
+
+def _optical_flow_to_rgb(
+    flow, saturate_magnitude= -1.0,name= None):
+    """
+    Visualize an optical flow field in RGB colorspace.
+    """
+    name = name or 'OpticalFlowToRGB'
+    hsv = _optical_flow_to_hsv(flow, saturate_magnitude, name)
+    hsv = hsv[None, :]
+    hsv = torch.permute(hsv, (0, 3, 1, 2))
+    hsv = hsv2rgb(hsv)
+    hsv = torch.permute(hsv, (0, 2, 3, 1))
+    return hsv
+
+
+def hsv2rgb(input):
+    assert(input.shape[1] == 3)
+
+    h, s, v = input[:, 0], input[:, 1], input[:, 2]
+    h_ = (h - torch.floor(h / 360) * 360) / 60
+    c = s * v
+    x = c * (1 - torch.abs(torch.fmod(h_, 2) - 1))
+
+    zero = torch.zeros_like(c)
+    y = torch.stack((
+        torch.stack((c, x, zero), dim=1),
+        torch.stack((x, c, zero), dim=1),
+        torch.stack((zero, c, x), dim=1),
+        torch.stack((zero, x, c), dim=1),
+        torch.stack((x, zero, c), dim=1),
+        torch.stack((c, zero, x), dim=1),
+    ), dim=0)
+
+    index = torch.repeat_interleave(torch.floor(h_).unsqueeze(1), 3, dim=1).unsqueeze(0).to(torch.long)
+    rgb = (y.gather(dim=0, index=index) + (v - c)).squeeze(0)
+    return rgb
