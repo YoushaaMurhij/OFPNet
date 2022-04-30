@@ -346,9 +346,9 @@ class AttU_Net(nn.Module):
         return d1
 
 
-class R2AttU_Net(nn.Module):
+class R2AttU_sepHead(nn.Module):
     def __init__(self,img_ch=23,output_ch=32,t=2):
-        super(R2AttU_Net,self).__init__()
+        super(R2AttU_sepHead,self).__init__()
         
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
         self.Upsample = nn.Upsample(scale_factor=2)
@@ -459,7 +459,7 @@ import time
 # import onnx 
 
 def main():
-    model = R2AttU_Net(img_ch=23, output_ch=32, t=2).to("cuda:0")
+    model = R2AttU_sepHead(img_ch=23, output_ch=32, t=2).to("cuda:0")
     x = torch.rand((1,23,256,256)).to("cuda:0")
     # torch.onnx.export(
     #     model,
