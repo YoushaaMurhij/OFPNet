@@ -390,7 +390,8 @@ class R2AttU_sepHead(nn.Module):
 
         self.observed_head = sepHead(ch_in=8, ch_out=8)
         self.occluded_head = sepHead(ch_in=8, ch_out=8)
-        self.flow_head = sepHead(ch_in=16, ch_out=16)
+        self.flow_dx_head  = sepHead(ch_in=8, ch_out=8)
+        self.flow_dy_head  = sepHead(ch_in=8, ch_out=8)
 
     def forward(self,x):
         # encoding path
@@ -431,49 +432,47 @@ class R2AttU_sepHead(nn.Module):
 
         d1 = self.shared_conv(d2)
 
-        out1 = self.observed_head(d1[:, :8, :, :])
-        out2 = self.occluded_head(d1[:, 8:16, :, :])
-        out3 = self.flow_head(d1[:, 16:, :, :])
+        out1 = self.observed_head(d1[:, :8   , :, :])
+        out2 = self.occluded_head(d1[:, 8:16 , :, :])
+        out3 = self.flow_dx_head(d1[: , 16:24, :, :])
+        out4 = self.flow_dy_head(d1[: , 24:  , :, :])
 
-        out = torch.cat([out1, out2, out3], dim=1)
+        out = torch.cat([out1, out2, out3, out4], dim=1)
         return out
 
 class sepHead(nn.Module):
     def __init__(self,ch_in,ch_out):
         super(sepHead,self).__init__()
         self.conv = nn.Sequential(
-            nn.BatchNorm2d(ch_in),
-            nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=1,stride=1,bias=True),
             nn.BatchNorm2d(ch_out),
             nn.ReLU(inplace=True),
             nn.Conv2d(ch_out, ch_out, kernel_size=1,stride=1,bias=True),
         )
 
-
     def forward(self,x):
         x = self.conv(x)
         return x     
 
 import time
-# import onnx 
+import onnx 
 
 def main():
     model = R2AttU_sepHead(img_ch=23, output_ch=32, t=2).to("cuda:0")
     x = torch.rand((1,23,256,256)).to("cuda:0")
-    # torch.onnx.export(
-    #     model,
-    #     x, 
-    #     "R2AttU_Net.onnx", 
-    #     export_params=True, 
-    #     # opset_version=11,
-    #     do_constant_folding=False, 
-    #     input_names = ['input'], 
-    #     output_names = ['output'])
+    torch.onnx.export(
+        model,
+        x, 
+        "R2AttU_sepHead.onnx", 
+        export_params=True, 
+        # opset_version=11,
+        do_constant_folding=False, 
+        input_names = ['input'], 
+        output_names = ['output'])
 
-    # onnx_model = onnx.load("R2AttU_Net.onnx")
-    # model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
-    # onnx.save(model_with_shapes, "R2AttU_Net_with_shapes.onnx")
+    onnx_model = onnx.load("R2AttU_sepHead.onnx")
+    model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
+    onnx.save(model_with_shapes, "R2AttU_sepHead_with_shapes.onnx")
     
     for i in range(20):
         inputs = torch.rand((1,23,256,256)).to("cuda:0")
