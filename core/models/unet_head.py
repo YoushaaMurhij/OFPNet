@@ -388,10 +388,10 @@ class R2AttU_sepHead(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.observed_head = sepHead(ch_in=8, ch_out=8)
-        self.occluded_head = sepHead(ch_in=8, ch_out=8)
-        self.flow_dx_head  = sepHead(ch_in=8, ch_out=8)
-        self.flow_dy_head  = sepHead(ch_in=8, ch_out=8)
+        self.observed_head = sepHead(ch_in=32, ch_out=8)
+        self.occluded_head = sepHead(ch_in=32, ch_out=8)
+        self.flow_dx_head  = sepHead(ch_in=32, ch_out=8)
+        self.flow_dy_head  = sepHead(ch_in=32, ch_out=8)
 
     def forward(self,x):
         # encoding path
@@ -432,10 +432,10 @@ class R2AttU_sepHead(nn.Module):
 
         d1 = self.shared_conv(d2)
 
-        out1 = self.observed_head(d1[:, :8   , :, :])
-        out2 = self.occluded_head(d1[:, 8:16 , :, :])
-        out3 = self.flow_dx_head(d1[: , 16:24, :, :])
-        out4 = self.flow_dy_head(d1[: , 24:  , :, :])
+        out1 = self.observed_head(d1)
+        out2 = self.occluded_head(d1)
+        out3 = self.flow_dx_head(d1)
+        out4 = self.flow_dy_head(d1)
 
         out = torch.cat([out1, out2, out3, out4], dim=1)
         return out
