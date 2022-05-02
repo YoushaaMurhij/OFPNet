@@ -346,9 +346,9 @@ class AttU_Net(nn.Module):
         return d1
 
 
-class R2AttU_sepHead(nn.Module):
+class R2AttU_Net(nn.Module):
     def __init__(self,img_ch=23,output_ch=32,t=2):
-        super(R2AttU_sepHead,self).__init__()
+        super(R2AttU_Net,self).__init__()
         
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
         self.Upsample = nn.Upsample(scale_factor=2)
@@ -380,18 +380,7 @@ class R2AttU_sepHead(nn.Module):
         self.Att2 = Attention_block(F_g=64,F_l=64,F_int=32)
         self.Up_RRCNN2 = RRCNN_block(ch_in=128, ch_out=64,t=t)
 
-        # self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
-        self.shared_conv = nn.Sequential(
-            nn.Conv2d(64, output_ch,
-            kernel_size=3, padding=1, bias=True),
-            nn.BatchNorm2d(output_ch),
-            nn.ReLU(inplace=True)
-        )
-
-        self.observed_head = sepHead(ch_in=32, ch_out=8)
-        self.occluded_head = sepHead(ch_in=32, ch_out=8)
-        self.flow_dx_head  = sepHead(ch_in=32, ch_out=8)
-        self.flow_dy_head  = sepHead(ch_in=32, ch_out=8)
+        self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
 
     def forward(self,x):
         # encoding path
@@ -430,49 +419,45 @@ class R2AttU_sepHead(nn.Module):
         d2 = torch.cat((x1,d2),dim=1)
         d2 = self.Up_RRCNN2(d2)
 
-        d1 = self.shared_conv(d2)
+        d1 = self.Conv_1x1(d2)
 
-        out1 = self.observed_head(d1)
-        out2 = self.occluded_head(d1)
-        out3 = self.flow_dx_head(d1)
-        out4 = self.flow_dy_head(d1)
+        return d1
 
-        out = torch.cat([out1, out2, out3, out4], dim=1)
-        return out
-
-class sepHead(nn.Module):
-    def __init__(self,ch_in,ch_out):
-        super(sepHead,self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(ch_in, ch_out, kernel_size=1,stride=1,bias=True),
-            nn.BatchNorm2d(ch_out),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(ch_out, ch_out, kernel_size=1,stride=1,bias=True),
-        )
+class WNet(nn.Module):
+    def __init__(self,img_ch, output_ch, t=1):
+        super(WNet,self).__init__()
+        self.t = t
+        self.img_ch = img_ch
+        self.output_ch = output_ch
+        self.occupancy_R2AttU_Net = R2AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch // 2, t=self.t)
+        self.flow_pred_R2AttU_Net = R2AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch // 2, t=self.t)
 
     def forward(self,x):
-        x = self.conv(x)
-        return x     
+        x1 = self.occupancy_R2AttU_Net(x)
+        x2 = self.flow_pred_R2AttU_Net(x)
+
+        out = torch.cat([x1, x2], dim=1)
+        return out     
 
 import time
 # import onnx 
 
 def main():
-    model = R2AttU_sepHead(img_ch=23, output_ch=32, t=2).to("cuda:0")
+    model = WNet(img_ch=23, output_ch=32, t=1).to("cuda:0")
     # x = torch.rand((1,23,256,256)).to("cuda:0")
     # torch.onnx.export(
     #     model,
     #     x, 
-    #     "R2AttU_sepHead.onnx", 
+    #     "WNet.onnx", 
     #     export_params=True, 
     #     # opset_version=11,
     #     do_constant_folding=False, 
     #     input_names = ['input'], 
     #     output_names = ['output'])
 
-    # onnx_model = onnx.load("R2AttU_sepHead.onnx")
+    # onnx_model = onnx.load("WNet.onnx")
     # model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
-    # onnx.save(model_with_shapes, "R2AttU_sepHead_with_shapes.onnx")
+    # onnx.save(model_with_shapes, "WNet_with_shapes.onnx")
     
     for i in range(20):
         inputs = torch.rand((1,23,256,256)).to("cuda:0")

@@ -20,11 +20,8 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
-# from core.models.efficientdet.backbone import EfficientFlow
-from core.models.unet_nest import R2AttU_Net
-from core.models.unet_head import R2AttU_sepHead
-# from core.models.linear_autoencoder import LAE
-# from core.models.models_mae import  mae_vit_large_patch16_dec512d8b, mae_vit_base_patch16_dec512d8b
+from core.models.wnet import WNet
+# from core.models.unet_head import R2AttU_sepHead
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import hyperparameters
@@ -67,11 +64,8 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    # model = LAE().cuda(gpu)
     # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
-    model = R2AttU_sepHead(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
-    # model = EfficientFlow(compound_coef=1).cuda(gpu)
-    # model = mae_vit_large_patch16_dec512d8b().cuda(gpu)
+    model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
