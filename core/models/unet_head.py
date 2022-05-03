@@ -347,9 +347,11 @@ class AttU_Net(nn.Module):
 
 
 class R2AttU_sepHead(nn.Module):
-    def __init__(self,img_ch=23,output_ch=32,t=2):
+    def __init__(self,img_ch=23,output_ch=32,t=2, sliced_head=False):
         super(R2AttU_sepHead,self).__init__()
-        
+
+        self.sliced_head = sliced_head
+
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
         self.Upsample = nn.Upsample(scale_factor=2)
 
@@ -388,10 +390,15 @@ class R2AttU_sepHead(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.observed_head = sepHead(ch_in=32, ch_out=8)
-        self.occluded_head = sepHead(ch_in=32, ch_out=8)
-        self.flow_dx_head  = sepHead(ch_in=32, ch_out=8)
-        self.flow_dy_head  = sepHead(ch_in=32, ch_out=8)
+        if self.sliced_head:
+            self.head_in_ch = 8
+        else:
+            self.head_in_ch = 32
+
+        self.observed_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+        self.occluded_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+        self.flow_dx_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
+        self.flow_dy_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
 
     def forward(self,x):
         # encoding path
@@ -432,10 +439,16 @@ class R2AttU_sepHead(nn.Module):
 
         d1 = self.shared_conv(d2)
 
-        out1 = self.observed_head(d1)
-        out2 = self.occluded_head(d1)
-        out3 = self.flow_dx_head(d1)
-        out4 = self.flow_dy_head(d1)
+        if self.sliced_head:      
+            out1 = self.observed_head(d1[:, :8   , :, :])
+            out2 = self.occluded_head(d1[:, 8:16 , :, :])
+            out3 = self.flow_dx_head(d1[: , 16:24, :, :])
+            out4 = self.flow_dy_head(d1[: , 24:  , :, :])
+        else:
+            out1 = self.observed_head(d1)
+            out2 = self.occluded_head(d1)
+            out3 = self.flow_dx_head(d1)
+            out4 = self.flow_dy_head(d1)
 
         out = torch.cat([out1, out2, out3, out4], dim=1)
         return out

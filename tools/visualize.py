@@ -8,8 +8,6 @@ import torch
 from torch.utils.data import DataLoader
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_nest import R2AttU_Net
-from core.models.efficientdet.backbone import EfficientFlow
-from core.models.models_mae import  mae_vit_large_patch16_dec512d8b, mae_vit_base_patch16_dec512d8b
 from core.utils.visual import *
 from core.utils.submission import apply_sigmoid_to_occupancy_logits
 from core.utils.io import get_pred_waypoint_logits
@@ -20,7 +18,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction Model Training')
     parser.add_argument('--title', help='choose a title for your wandb/log process', required=True)
     parser.add_argument('--gpu', default='0', help='device')
-    parser.add_argument("--ckpt", default="pretrained/20220423_125649_MAE_Vit/Epoch_3_Iter_15218.pth", help="Use pre-trained models")
+    parser.add_argument("--ckpt", default="pretrained/20220429_221529_R2AttU_T2/Epoch_2_Iter_15218.pth", help="Use pre-trained models")
     parser.add_argument('--save_dir', default='./logs/vis_data/', help='path where to save output models and logs')
     args = parser.parse_args()
     return args
@@ -31,9 +29,8 @@ def main(args):
     PATH = os.path.join(args.save_dir, save_str)
     if not os.path.exists(PATH):
         os.makedirs(PATH, exist_ok=True)
-    # model = EfficientFlow(compound_coef=1).to(DEVICE)
-    model = mae_vit_large_patch16_dec512d8b().to(DEVICE)
-    # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
+
+    model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).to(DEVICE)
     checkpoint = torch.load(args.ckpt, map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()

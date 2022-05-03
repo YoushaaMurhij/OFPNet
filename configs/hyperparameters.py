@@ -48,7 +48,7 @@ def get_config():
     cfg.TRAIN_BATCH_SIZE             = 12
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
-    cfg.EPOCHS                       = 4
+    cfg.EPOCHS                       = 3
     cfg.LR                           = 0.0001
     cfg.MOMENTUM                     = 0.8
 

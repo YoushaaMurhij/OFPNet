@@ -3,8 +3,8 @@ from tqdm import tqdm
 import tensorflow as tf
 from core.utils.submission import *
 from core.models.unet_nest import R2AttU_Net
-# from core.models.models_mae import  mae_vit_large_patch16_dec512d8b, mae_vit_base_patch16_dec512d8b
-from core.models.efficientdet.backbone import EfficientFlow
+from core.models.unet_head import R2AttU_sepHead
+from core.models.wnet import WNet
 
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
@@ -19,18 +19,15 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction submission')
     parser.add_argument('--method', help='Unique method name', required=True)
     parser.add_argument("--description", help="Brief description of the method", required=True)
-    parser.add_argument("--pretrained" , default="pretrained/20220423_171701_eff_coef0/Epoch_1_Iter_22827.pth", help="Use pre-trained models")
+    parser.add_argument("--pretrained" , default="pretrained/20220430_221205_R2AttU_T2_sepHead/Epoch_2_Iter_10146.pth", help="Use pre-trained models")
     
     args = parser.parse_args()
     return args
 
 def main(args):
 
-    # model = EfficientFlow(compound_coef=1).to(DEVICE)
-    model = EfficientFlow(compound_coef=1).to(DEVICE)
-    # model = mae_vit_base_patch16_dec512d8b().to(DEVICE)
-    # model = mae_vit_large_patch16_dec512d8b().to(DEVICE)
-    # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
+    model = R2AttU_sepHead(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=2, sliced_head=True).to(DEVICE)
+    # model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).to(DEVICE)
     checkpoint = torch.load(args.pretrained, map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
