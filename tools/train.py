@@ -22,7 +22,10 @@ import torch.multiprocessing as mp
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.wnet import WNet
 from core.models.xception import Xception
-# from core.models.unet_head import R2AttU_sepHead
+from core.models.unet_head import R2AttU_sepHead
+from core.models.unet_seq import R2AttU_seq
+
+from core.models.unet_nest import R2AttU_Net
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import hyperparameters
@@ -40,7 +43,7 @@ def parse_args():
     parser.add_argument('-g', '--gpus' , default=1, type=int, help='number of gpus per node')
     parser.add_argument('-nr', '--nr'  , default=0, type=int, help='ranking within the nodes')
     parser.add_argument('--resume'     , help='resume from checkpoint', action="store_true")
-    parser.add_argument('--master_port', help='specify a port', default="8888")
+    parser.add_argument('--master_port', help='specify a port', default="8898")
     parser.add_argument('--title'      , help='choose a title for your wandb/log process', required=True)
 
     args = parser.parse_args()
@@ -65,8 +68,8 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    model = Xception('xception71', in_channels=cfg.INPUT_SIZE, time_limit=8, n_traj=128, with_head=False).cuda(gpu)
-
+    # model = Xception('xception71', in_channels=cfg.INPUT_SIZE, time_limit=8, n_traj=128, with_head=True).cuda(gpu)
+    model = R2AttU_seq(img_ch=23, output_ch=32, t=1).cuda(gpu)
     # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
     # model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).cuda(gpu)
 
@@ -108,6 +111,13 @@ def train(gpu, args):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, verbose=True)
     elif cfg.SCHEDULER == 'CosineAnnealingLR':
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader), eta_min=0)
+    elif cfg.SCHEDULER == 'CosineAnnealingWarmRestarts':
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=len(train_loader),
+        T_mult=1,
+        eta_min=max(1e-2 * cfg.LR, 1e-6),
+        last_epoch=-1)
     else:
         raise AttributeError("This scheduler is not implemented ")
     # torch.autograd.set_detect_anomaly(True)
