@@ -10,9 +10,9 @@ class Xception(nn.Module):
         super().__init__()
         
         if with_head:
-            self.factor = 4
+            self.factor = 1
         else:
-            self.factor = 16
+            self.factor = 4
         self.n_traj = n_traj
         self.time_limit = time_limit
         self.model = timm.create_model(
@@ -23,6 +23,8 @@ class Xception(nn.Module):
         )
 
         self.head_in_ch = 8
+        self.up1 = nn.ConvTranspose2d(self.head_in_ch, self.head_in_ch, kernel_size=2, stride=2)
+        self.up2 = nn.ConvTranspose2d(self.head_in_ch, self.head_in_ch, kernel_size=2, stride=2)
         self.observed_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
         self.occluded_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
         self.flow_dx_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
@@ -32,9 +34,10 @@ class Xception(nn.Module):
     def forward(self, x):
         x = self.model(x)
 
-        if self.factor == 4:
-            x = x.view(-1, 8, 256, 256)
-
+        if self.factor == 1:
+            x = x.view(-1, 8, 64, 64)
+            x = self.up1(x)
+            x = self.up2(x)
             out1 = self.observed_head(x)
             out2 = self.occluded_head(x)
             out3 = self.flow_dx_head(x)
@@ -64,7 +67,7 @@ import time
 # import onnx 
 
 def main():
-    model = Xception('xception71', in_channels=23, time_limit=8, n_traj=128, with_head=False).to("cuda:0")
+    model = Xception('xception71', in_channels=23, time_limit=8, n_traj=64, with_head=True).to("cuda:0")
     # x = torch.rand((1,23,256,256)).to("cuda:0")
     # torch.onnx.export(
     #     model,

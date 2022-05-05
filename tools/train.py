@@ -68,8 +68,8 @@ def train(gpu, args):
         os.makedirs(PATH, exist_ok=True)
 
     torch.cuda.set_device(gpu)
-    # model = Xception('xception71', in_channels=cfg.INPUT_SIZE, time_limit=8, n_traj=128, with_head=True).cuda(gpu)
-    model = R2AttU_seq(img_ch=23, output_ch=32, t=1).cuda(gpu)
+    model = Xception('xception71', in_channels=23, time_limit=8, n_traj=64, with_head=True).cuda(gpu)
+    # model = R2AttU_seq(img_ch=23, output_ch=32, t=1).cuda(gpu)
     # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
     # model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).cuda(gpu)
 

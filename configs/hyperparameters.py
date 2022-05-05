@@ -45,7 +45,7 @@ def get_config():
     # Optimization:            
     cfg.OPTIMIZER                    = 'adamw'
     cfg.SCHEDULER                    = 'CosineAnnealingLR' # 'CosineAnnealingLR' , GetInitLR, ReduceLROnPlateau, CosineAnnealingWarmRestarts
-    cfg.TRAIN_BATCH_SIZE             = 12
+    cfg.TRAIN_BATCH_SIZE             = 16
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
     cfg.EPOCHS                       = 3
