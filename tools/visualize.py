@@ -111,6 +111,7 @@ def main(args):
             flow_rgb = flow_rgb_image(
                 flow=flow_grids['vehicles'],
                 roadgraph_image=roadgraph,
+                agent_trails=None,
             )
             pred_flow_images.append(flow_rgb[0].detach().cpu())
  
@@ -121,6 +122,7 @@ def main(args):
             flow_rgb = flow_rgb_image(
                 flow=flow_grids['vehicles'],
                 roadgraph_image=roadgraph,
+                agent_trails=None,
             )
             true_flow_images.append(flow_rgb[0].detach().cpu())
 

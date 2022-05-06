@@ -45,7 +45,9 @@ class Xception(nn.Module):
 
             logits = torch.cat([out1, out2, out3, out4], dim=1)
         else:
-            logits = x.view(-1, 32, 256, 256)
+            x = x.view(-1, 32, 64, 64)
+            x = self.up1(x)
+            logits = self.up2(x)
 
         return logits
 

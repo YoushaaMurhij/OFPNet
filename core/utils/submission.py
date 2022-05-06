@@ -113,17 +113,18 @@ def generate_predictions_for_one_test_shard(
 def save_submission_to_file(
     submission: occupancy_flow_submission_pb2.ChallengeSubmission,
     test_shard_path: str,
-    folder: str) -> None:
+    folder: str,
+    split: str) -> None:
 
     """Save predictions for one test shard as a binary protobuf."""
 
     save_folder = os.path.join(cfg.DATASET_FOLDER,
-                                'occupancy_flow_challenge/validation', folder)
+                                'occupancy_flow_challenge/' + split, folder)
     os.makedirs(save_folder, exist_ok=True)
     basename = os.path.basename(test_shard_path)
-    if 'validation_tfexample.tfrecord' not in basename:
+    if split + '_tfexample.tfrecord' not in basename:
         raise ValueError('Cannot determine file path for saving submission.')
-    submission_basename = basename.replace('validation_tfexample.tfrecord',
+    submission_basename = basename.replace(split + '_tfexample.tfrecord',
                                             'occupancy_flow_submission.binproto')
     submission_shard_file_path = os.path.join(save_folder, submission_basename)
     # num_scenario_predictions = len(submission.scenario_predictions)

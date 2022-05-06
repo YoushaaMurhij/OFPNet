@@ -54,6 +54,9 @@ class WaymoOccupancyFlowDataset(Dataset):
         true_waypoints = occupancy_flow_grids.create_ground_truth_waypoint_grids(timestep_grids=timestep_grids, config=self.config)
         vis_grids      = occupancy_flow_grids.create_ground_truth_vis_grids(inputs=inputs, timestep_grids=timestep_grids, config=self.config)
 
+        # Agent_trails = vis_grids.agent_trails.numpy()
+        # 'agent_trails': torch.from_numpy(Agent_trails[0]).cuda(self.gpu)
+        
         model_inputs = make_model_inputs(timestep_grids, vis_grids).numpy()
 
         grid = torch.tensor(model_inputs[0])
@@ -64,7 +67,7 @@ class WaymoOccupancyFlowDataset(Dataset):
         waypoint['vehicles']['occluded_occupancy']    = [torch.from_numpy(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.occluded_occupancy]    # (256, 256, 1) * 8
         waypoint['vehicles']['flow']                  = [torch.from_numpy(wp[0].numpy()).cuda(self.gpu) for wp in true_waypoints.vehicles.flow]                  # (256, 256, 2) * 8
 
-        sample = {'grids': grid, 'waypoints': waypoint} # 'index': idx 'scenario/id': ID
+        sample = {'grids': grid, 'waypoints': waypoint, } # 'index': idx 'scenario/id': ID
 
         return sample
 
