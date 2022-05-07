@@ -367,6 +367,7 @@ class UNet_LSTM(nn.Module):
 
             logits.append(self.outc(x))
         logits = torch.stack(logits)
+        logits = torch.squeeze(logits, dim=1)
         return logits
 
 import time
