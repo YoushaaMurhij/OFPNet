@@ -1,6 +1,8 @@
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -42,9 +44,11 @@ class Up(nn.Module):
 
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up = nn.Upsample(
+                scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2)
+            self.up = nn.ConvTranspose2d(
+                in_channels // 2, in_channels // 2, kernel_size=2, stride=2)
 
         self.conv = DoubleConv(in_channels, out_channels)
 
@@ -55,7 +59,7 @@ class Up(nn.Module):
         diffX = torch.tensor([x2.shape[3] - x1.shape[3]])
 
         x1 = F.pad(x1, [torch.div(diffX, 2, rounding_mode='floor'), diffX - torch.div(diffX, 2, rounding_mode='floor'),
-                    torch.div(diffY, 2, rounding_mode='floor'), diffY - torch.div(diffY, 2, rounding_mode='floor')])
+                        torch.div(diffY, 2, rounding_mode='floor'), diffY - torch.div(diffY, 2, rounding_mode='floor')])
 
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
@@ -89,46 +93,53 @@ class ConvLSTMCell(nn. Module):
 
         super(ConvLSTMCell, self). __init__()
 
-        self. input_dim = input_dim
-        self. hidden_dim = hidden_dim
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
 
-        self. kernel_size = kernel_size
-        self. padding = kernel_size[0] // 2, kernel_size[1] // 2 # guaranteed to remain unchanged during delivery (h,w).
-        self. bias = bias
+        self.kernel_size = kernel_size
+        # guaranteed to remain unchanged during delivery (h,w).
+        self.padding = kernel_size[0] // 2, kernel_size[1] // 2
+        self.bias = bias
 
-        self. conv = nn. Conv2d(in_channels=self. input_dim + self. hidden_dim,
-                              out_channels=4 * self. hidden_dim, # i gate, f gate, o gate, g gate are calculated together and then split open
-                              kernel_size=self. kernel_size,
-                              padding=self. padding,
-                              bias=self. bias)
+        self.conv = nn. Conv2d(in_channels=self.input_dim + self.hidden_dim,
+                                # i gate, f gate, o gate, g gate are calculated together and then split open
+                                out_channels=4 * self.hidden_dim,
+                                kernel_size=self.kernel_size,
+                                padding=self.padding,
+                                bias=self.bias)
 
     def forward(self, input_tensor, cur_state):
-        h_cur, c_cur = cur_state # each timestamp contains two state tensors: h and c
+        h_cur, c_cur = cur_state  # each timestamp contains two state tensors: h and c
 
-        combined = torch. cat([input_tensor, h_cur], dim=1) # concatenate along channel axis # concatenates input tensors with h-state tensors along the channel dimensions
+        # concatenate along channel axis # concatenates input tensors with h-state tensors along the channel dimensions
+        combined = torch.cat([input_tensor, h_cur], dim=1)
 
-        combined_conv = self. conv(combined) # i gate, f gate, o gate, g gate together are calculated, and then split open
-        cc_i, cc_f, cc_o, cc_g = torch. split(combined_conv, self. hidden_dim, dim=1)
-        i = torch. sigmoid(cc_i)
-        f = torch. sigmoid(cc_f)
-        o = torch. sigmoid(cc_o)
-        g = torch. tanh(cc_g)
+        # i gate, f gate, o gate, g gate together are calculated, and then split open
+        combined_conv = self.conv(combined)
+        cc_i, cc_f, cc_o, cc_g = torch.split(
+            combined_conv, self.hidden_dim, dim=1)
+        i = torch.sigmoid(cc_i)
+        f = torch.sigmoid(cc_f)
+        o = torch.sigmoid(cc_o)
+        g = torch.tanh(cc_g)
 
-        c_next = f * c_cur + i * g # c state tensor update
-        h_next = o * torch. tanh(c_next) #h state tensor update
+        c_next = f * c_cur + i * g  # c state tensor update
+        h_next = o * torch.tanh(c_next)  # h state tensor update
 
-        return h_next, c_next # outputs the two state tensors of the current timestamp
+        return h_next, c_next  # outputs the two state tensors of the current timestamp
 
     def init_hidden(self, batch_size, image_size):
         """
- initial state tensor initialization. the state tensor of the first timestamp is initialized at 0
+        initial state tensor initialization. the state tensor of the first timestamp is initialized at 0
         :param batch_size:
         :param image_size:
         :return:
         """
         height, width = image_size
-        init_h = torch. zeros(batch_size, self. hidden_dim, height, width, device=self. conv. weight. device)
-        init_c = torch. zeros(batch_size, self. hidden_dim, height, width, device=self. conv. weight. device)
+        init_h = torch.zeros(batch_size, self.hidden_dim,
+                              height, width, device=self.conv.weight.device)
+        init_c = torch.zeros(batch_size, self.hidden_dim,
+                              height, width, device=self.conv.weight.device)
         return (init_h, init_c)
 
 
@@ -162,83 +173,86 @@ class ConvLSTM(nn. Module):
 
     def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
                  batch_first=False, bias=True, return_all_layers=False):
-        super(ConvLSTM, self). __init__()
+        super(ConvLSTM, self).__init__()
 
-        self. _check_kernel_size_consistency(kernel_size)
+        self._check_kernel_size_consistency(kernel_size)
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
-        kernel_size = self. _extend_for_multilayer(kernel_size, num_layers) # is converted to a list
-        hidden_dim = self. _extend_for_multilayer(hidden_dim, num_layers) # is converted to a list
-        if not len(kernel_size) == len(hidden_dim) == num_layers: # judge consistency 
+        kernel_size = self._extend_for_multilayer(
+            kernel_size, num_layers)  # is converted to a list
+        hidden_dim = self._extend_for_multilayer(
+            hidden_dim, num_layers)  # is converted to a list
+        if not len(kernel_size) == len(hidden_dim) == num_layers:  # judge consistency
             raise ValueError('Inconsistent list length.')
 
-        self. input_dim = input_dim
-        self. hidden_dim = hidden_dim
-        self. kernel_size = kernel_size
-        self. num_layers = num_layers
-        self. batch_first = batch_first
-        self. bias = bias
-        self. return_all_layers = return_all_layers
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.kernel_size = kernel_size
+        self.num_layers = num_layers
+        self.batch_first = batch_first
+        self.bias = bias
+        self.return_all_layers = return_all_layers
 
         cell_list = []
-        for i in range(0, self. num_layers):
+        for i in range(0, self.num_layers):
             # THE INPUT DIMENSION OF THE CURRENT LSTM LAYER
             # if i==0:
             #     cur_input_dim = self.input_dim
             # else:
             #     cur_input_dim = self.hidden_dim[i - 1]
-            cur_input_dim = self. input_dim if i == 0 else self. hidden_dim[i - 1] 
-            cell_list. append(ConvLSTMCell(input_dim=cur_input_dim,
-                                          hidden_dim=self. hidden_dim[i],
-                                          kernel_size=self. kernel_size[i],
-                                          bias=self. bias))
+            cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i - 1]
+            cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
+                                          hidden_dim=self.hidden_dim[i],
+                                          kernel_size=self.kernel_size[i],
+                                          bias=self.bias))
 
-        self. cell_list = nn. ModuleList (cell_list) # Concatenates multiple LSTM layers defined into a network model
+        # Concatenates multiple LSTM layers defined into a network model
+        self. cell_list = nn.ModuleList(cell_list)
 
     def forward(self, input_tensor, hidden_state=None):
         """
         Parameters
         ----------
         input_tensor: 5-D Tensor either of shape (t, b, c, h, w) or (b, t, c, h, w)
- hidden_state: everything
-            None. todo implement stateful
+        hidden_state: everything
+        None. todo implement stateful
         Returns
         -------
         last_state_list, layer_output
         """
-        if not self. batch_first:
+        if not self.batch_first:
             # (t, b, c, h, w) -> (b, t, c, h, w)
-            input_tensor = input_tensor. trade-ins(1, 0, 2, 3, 4)
+            input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
 
         # Implement stateful ConvLSTM
         if hidden_state is not None:
             raise NotImplementedError()
         else:
             # Since the init is done in forward. Can send image size here
-            b, _, _, h, w = input_tensor. size() # automatically gets b,h,w information
-            hidden_state = self. _init_hidden(batch_size=b, image_size=(h, w))
+            b, _, _, h, w = input_tensor.size()  # automatically gets b,h,w information
+            hidden_state = self._init_hidden(batch_size=b, image_size=(h, w))
 
         layer_output_list = []
         last_state_list = []
 
-        seq_len = input_tensor.size(1)  
+        seq_len = input_tensor.size(1)
         cur_layer_input = input_tensor
 
-        for layer_idx in range(self.num_layers):  
+        for layer_idx in range(self.num_layers):
 
             h, c = hidden_state[layer_idx]
             output_inner = []
-            for t in range(seq_len):  
-                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :], cur_state=[h, c])
+            for t in range(seq_len):
+                h, c = self.cell_list[layer_idx](
+                    input_tensor=cur_layer_input[:, t, :, :, :], cur_state=[h, c])
 
+                output_inner.append(h)
 
-                output_inner.append(h) 
+            layer_output = torch.stack(output_inner, dim=1)
+            cur_layer_input = layer_output
 
-            layer_output = torch.stack(output_inner, dim=1) 
-            cur_layer_input = layer_output 
-
-            layer_output_list.append(layer_output)  
-            last_state_list.append([h, c]) 
+            layer_output_list.append(layer_output)
+            last_state_list.append([h, c])
 
         if not self.return_all_layers:
             layer_output_list = layer_output_list[-1:]
@@ -247,36 +261,21 @@ class ConvLSTM(nn. Module):
         return layer_output_list, last_state_list
 
     def _init_hidden(self, batch_size, image_size):
-        """
-        所有lstm层的第一个timestamp的输入状态0初始化
-        :param batch_size:
-        :param image_size:
-        :return:
-        """
         init_states = []
         for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(batch_size, image_size))
+            init_states.append(
+                self.cell_list[i].init_hidden(batch_size, image_size))
         return init_states
 
     @staticmethod
     def _check_kernel_size_consistency(kernel_size):
-        """
- detects whether the input kernel_size meets the requirements, and the format of the required kernel_size is list or tuple
-        :param kernel_size:
-        :return:
-        """
+ 
         if not (isinstance(kernel_size, tuple) or
                 (isinstance(kernel_size, list) and all([isinstance(elem, tuple) for elem in kernel_size]))):
             raise ValueError('`kernel_size` must be tuple or list of tuples')
 
     @staticmethod
     def _extend_for_multilayer(param, num_layers):
-        """
- scale to multi-layer lstam cases
- :p aram param:
-        :param num_layers:
-        :return:
-        """
         if not isinstance(param, list):
             param = [param] * num_layers
         return param
@@ -316,11 +315,12 @@ class ConvLSTM(nn. Module):
 #     #print('output:', output[-1:][0].shape)
 
 class UNet_LSTM(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+    def __init__(self, n_channels, n_classes, bilinear=True, sequence=True):
         super(UNet_LSTM, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
+        self.sequence = sequence
 
         self.inc = DoubleConv(n_channels, 64)
         self.down1 = Down(64, 128)
@@ -336,7 +336,20 @@ class UNet_LSTM(nn.Module):
         self.outc = OutConv(64, n_classes)
 
     def forward(self, input):
-        input = torch.unsqueeze(input, dim=1)
+        road_graph = input[:, 0, :, :]
+        if self.sequence:
+            seq = []
+            for i in range(1, 11):
+                seq.append(torch.concat(
+                    (road_graph, input[:, i, :, :], input[:, 11 + i, :, :]), dim=0))
+            seq.append(torch.concat(
+                (road_graph, input[:, 11, :, :], input[:, 22, :, :]), dim=0))
+            input = torch.stack(seq)
+            input = torch.unsqueeze(input, dim=0)
+
+        else:
+            input = torch.unsqueeze(input, dim=1)
+
         b, _, _, _, _ = input.shape
 
         x1, x2, x3, x4 = [], [], [], []
@@ -353,26 +366,39 @@ class UNet_LSTM(nn.Module):
         x3 = torch.stack(x3)
         x4 = torch.stack(x4)
 
-        x2_data, x2_target = x2[:, 0:3, ...], x2[:, -3:, ...]
+        x2_data, x2_target = x2[:, 0:8, ...], x2[:, -8:, ...]
         x2_cl_outs = self.cvlstm1(x2_data)
-        x4_data, x4_target = x4[:, 0:3, ...], x4[:, -3:, ...]
+        x4_data, x4_target = x4[:, 0:8, ...], x4[:, -8:, ...]
         x4_cl_outs = self.cvlstm2(x4_data)
         x4 = x4_target
         b, _, _, _, _ = x4.shape
         logits = []
+  
         for i in range(b):
-            x = self.up1(x4_cl_outs[0][0][i,...], x3[i, -3:, ...])
+            x = self.up1(x4_cl_outs[0][0][i, ...], x3[i, -8:, ...])
             x = self.up2(x, x2_cl_outs[0][0][i])
-            x = self.up3(x, x1[i, -3:, ...])
+            x = self.up3(x, x1[i, -8:, ...])
 
             logits.append(self.outc(x))
         logits = torch.stack(logits)
-        logits = torch.squeeze(logits, dim=1)
+        if self.sequence:
+            observed, occluded, flow_dx, flow_dy = [], [], [], []
+            for i in range(8):
+                observed.append(logits[:, i, 0, :, :])
+                occluded.append(logits[:, i, 1, :, :])
+                flow_dx.append(logits[: , i, 2, :, :])
+                flow_dy.append(logits[: , i, 3, :, :])
+            logits_list =  observed + occluded + flow_dx + flow_dy
+            logits = torch.stack(logits_list)
+            logits = torch.permute(logits, (1, 0, 2, 3))
+        else:
+            logits = torch.squeeze(logits, dim=1)
+        
         return logits
 
-import time
+
 def main():
-    model = UNet_LSTM(n_channels=23, n_classes=32).to("cuda:0")
+    model = UNet_LSTM(n_channels=3, n_classes=4, sequence=True).to("cuda:0")
 
     for i in range(10):
         inputs = torch.rand((1, 23, 256, 256)).to("cuda:0")
@@ -385,24 +411,24 @@ def main():
         print("inf time =", time.time() - t)
     print(output.shape)
 
-    try:
-        import onnx
-        x = torch.rand((1, 23, 256, 256)).to("cuda:0")
-        torch.onnx.export(
-            model,
-            x,
-            "UNet_LSTM.onnx",
-            export_params=True,
-            opset_version=11,
-            do_constant_folding=False,
-            input_names=['input'],
-            output_names=['output'])
+    # try:
+    #     import onnx
+    #     x = torch.rand((1, 23, 256, 256)).to("cuda:0")
+    #     torch.onnx.export(
+    #         model,
+    #         x,
+    #         "UNet_LSTM.onnx",
+    #         export_params=True,
+    #         opset_version=11,
+    #         do_constant_folding=False,
+    #         input_names=['input'],
+    #         output_names=['output'])
 
-        onnx_model = onnx.load("UNet_LSTM.onnx")
-        model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
-        onnx.save(model_with_shapes, "UNet_LSTM_with_shapes.onnx")
-    except:
-        print("Install ONNX to convert the model!")
+    #     onnx_model = onnx.load("UNet_LSTM.onnx")
+    #     model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
+    #     onnx.save(model_with_shapes, "UNet_LSTM_with_shapes.onnx")
+    # except:
+    #     print("Install ONNX to convert the model!")
 
 
 if __name__ == "__main__":
