@@ -282,39 +282,6 @@ class ConvLSTM(nn. Module):
         return param
 
 
-# if __name__ == "__main__":
-#     # data = torch.randn((128, 30, 30))
-#     # model = ConvLSTM(input_dim=128,
-#     #                  hidden_dim=32,
-#     #                  kernel_size=[3],
-#     #                  num_layers=1,
-#     #                  batch_first=True,
-#     #                  bias=True,
-#     #                  return_all_layers=True)
-#     # layer_output_list, last_state_list = model(data)
-#     #
-#     # last_layer_output = layer_output_list[-1]
-#     # last_layer_last_h, last_layer_last_c = last_state_list[-1]
-#     #
-#     # print(last_layer_output[:, -1, ...] == last_layer_last_h)
-#     # print(last_layer_output.shape)
-#     x = torch. rand((30, 3, 3, 128, 128))
-#     convlstm = ConvLSTM(input_dim=3,
-#                         hidden_dim=[16,16,3],
-#                         kernel_size=[(3, 3),(5,5),(7,7)],
-#                         num_layers=3,
-#                         batch_first=True, bias= True, return_all_layers=False)
-#     layer_output_list, last_state_list = convlstm(x)
-
-#     last_layer_output = layer_output_list[-1]
-#     last_layer_last_h, last_layer_last_c = last_state_list[-1]
-
-#     #h = last_states[0][0]  # 0 for layer index, 0 for h index
-#     #print(h)
-#     print('last h:', last_layer_last_h. shape)
-#     #print(convlstm)
-#     #print('output:', output[-1:][0].shape)
-
 class UNet_LSTM(nn.Module):
     def __init__(self, n_channels, n_classes, with_head, bilinear=True, sequence=True):
         super(UNet_LSTM, self).__init__()
