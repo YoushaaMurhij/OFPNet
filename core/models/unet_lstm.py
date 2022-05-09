@@ -351,14 +351,22 @@ class UNet_LSTM(nn.Module):
     def forward(self, input):
         road_graph = input[:, 0, :, :]
         if self.sequence:
-            seq = []
-            for i in range(1, 11):
+            batch_seq = []
+            for batch in range(input.size(0)):
+                road_graph = input[batch, 0, None, :, :]
+                seq = []
+                for i in range(1, 11):
+                    seq.append(torch.concat(
+                        (road_graph, input[batch, i, None, :, :], input[batch, 11 + i, None, :, :]), dim=0))
+                    
                 seq.append(torch.concat(
-                    (road_graph, input[:, i, :, :], input[:, 11 + i, :, :]), dim=0))
-            seq.append(torch.concat(
-                (road_graph, input[:, 11, :, :], input[:, 22, :, :]), dim=0))
-            input = torch.stack(seq)
-            input = torch.unsqueeze(input, dim=0)
+                    (road_graph, input[batch, 11, None, :, :], input[batch, 22, None, :, :]), dim=0))
+                x = torch.stack(seq)
+                # x = x[None, :]
+                # x = torch.unsqueeze(x, dim=0)
+                batch_seq.append(x)
+
+            input = torch.stack(batch_seq)
 
         else:
             input = torch.unsqueeze(input, dim=1)
@@ -432,11 +440,11 @@ class sepHead(nn.Module):
 
 
 def main():
-    # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).to("cuda:0")
-    model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).to("cuda:0")
+    model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).to("cuda:0")
+    # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).to("cuda:0")
 
     for i in range(10):
-        inputs = torch.rand((1, 23, 256, 256)).to("cuda:0")
+        inputs = torch.rand((3, 23, 256, 256)).to("cuda:0")
         t = time.time()
         torch.cuda.synchronize()
         output = model(inputs)
