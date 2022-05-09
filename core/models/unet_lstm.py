@@ -1,3 +1,4 @@
+import sqlite3
 import time
 import torch
 import torch.nn as nn
@@ -315,12 +316,17 @@ class ConvLSTM(nn. Module):
 #     #print('output:', output[-1:][0].shape)
 
 class UNet_LSTM(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, sequence=True):
+    def __init__(self, n_channels, n_classes, with_head, bilinear=True, sequence=True):
         super(UNet_LSTM, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
         self.sequence = sequence
+        self.with_head = with_head
+        if self.sequence:
+            self.T = 8
+        else: 
+            self.T = 3
 
         self.inc = DoubleConv(n_channels, 64)
         self.down1 = Down(64, 128)
@@ -334,6 +340,13 @@ class UNet_LSTM(nn.Module):
         # self.up3 = Up(256, 64, bilinear)
         self.up3 = Up(192, 64, bilinear)
         self.outc = OutConv(64, n_classes)
+
+        if self.with_head:
+            self.head_in_ch = 32
+            self.observed_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.occluded_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dx_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dy_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
 
     def forward(self, input):
         road_graph = input[:, 0, :, :]
@@ -366,18 +379,18 @@ class UNet_LSTM(nn.Module):
         x3 = torch.stack(x3)
         x4 = torch.stack(x4)
 
-        x2_data, x2_target = x2[:, 0:8, ...], x2[:, -8:, ...]
+        x2_data, x2_target = x2[:, 0:self.T, ...], x2[:, -self.T:, ...]
         x2_cl_outs = self.cvlstm1(x2_data)
-        x4_data, x4_target = x4[:, 0:8, ...], x4[:, -8:, ...]
+        x4_data, x4_target = x4[:, 0:self.T, ...], x4[:, -self.T:, ...]
         x4_cl_outs = self.cvlstm2(x4_data)
         x4 = x4_target
         b, _, _, _, _ = x4.shape
         logits = []
   
         for i in range(b):
-            x = self.up1(x4_cl_outs[0][0][i, ...], x3[i, -8:, ...])
+            x = self.up1(x4_cl_outs[0][0][i, ...], x3[i, -self.T:, ...])
             x = self.up2(x, x2_cl_outs[0][0][i])
-            x = self.up3(x, x1[i, -8:, ...])
+            x = self.up3(x, x1[i, -self.T:, ...])
 
             logits.append(self.outc(x))
         logits = torch.stack(logits)
@@ -394,11 +407,33 @@ class UNet_LSTM(nn.Module):
         else:
             logits = torch.squeeze(logits, dim=1)
         
+        if self.with_head:      
+            out1 = self.observed_head(logits)
+            out2 = self.occluded_head(logits)
+            out3 = self.flow_dx_head(logits)
+            out4 = self.flow_dy_head(logits)
+
+            logits = torch.cat([out1, out2, out3, out4], dim=1)
+
         return logits
+
+class sepHead(nn.Module):
+    def __init__(self,ch_in,ch_out):
+        super(sepHead,self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(ch_in, ch_out, kernel_size=1,stride=1,bias=True),
+            nn.BatchNorm2d(ch_out),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(ch_out, ch_out, kernel_size=1,stride=1,bias=True),
+        )
+    def forward(self,x):
+        x = self.conv(x)
+        return x 
 
 
 def main():
-    model = UNet_LSTM(n_channels=3, n_classes=4, sequence=True).to("cuda:0")
+    # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).to("cuda:0")
+    model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).to("cuda:0")
 
     for i in range(10):
         inputs = torch.rand((1, 23, 256, 256)).to("cuda:0")

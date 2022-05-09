@@ -76,8 +76,9 @@ def train(gpu, args):
     # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
     # model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).cuda(gpu)
     # model = UNext(num_classes=32).cuda(gpu)
-    model = UNext(num_classes=32, with_head=True).cuda(gpu)
+    # model = UNext(num_classes=32, with_head=True).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, sequence=True).cuda(gpu)
+    model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = SASTANGen(n_channels=3, output_channels=32).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
