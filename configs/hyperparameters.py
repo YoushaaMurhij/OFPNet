@@ -45,10 +45,10 @@ def get_config():
     # Optimization:            
     cfg.OPTIMIZER                    = 'adamw'
     cfg.SCHEDULER                    = 'CosineAnnealingLR' # 'CosineAnnealingLR' , GetInitLR, ReduceLROnPlateau, CosineAnnealingWarmRestarts
-    cfg.TRAIN_BATCH_SIZE             = 6
+    cfg.TRAIN_BATCH_SIZE             = 24
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
-    cfg.EPOCHS                       = 4
+    cfg.EPOCHS                       = 5
     cfg.LR                           = 0.001
     cfg.MOMENTUM                     = 0.8
 
@@ -68,7 +68,7 @@ def get_config():
     cfg.agent_points_per_side_width  = 16
 
     # Train configs
-    cfg.WANDB_MODE                   = "online"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
+    cfg.WANDB_MODE                   = "disabled"  # {'run', 'online', 'offline', 'dryrun', 'disabled'}
 
     return cfg
 

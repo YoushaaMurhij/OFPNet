@@ -173,8 +173,7 @@ class UNext(nn.Module):
 
     def __init__(self,
                  num_classes,
-                 input_channels=23,
-                 deep_supervision=False,
+                 with_head,
                  img_size=256,
                  patch_size=16,
                  embed_dims=[256, 512, 512],
@@ -190,6 +189,8 @@ class UNext(nn.Module):
                  sr_ratios=[8, 4, 2, 1],
                  **kwargs):
         super().__init__()
+
+        self.with_head = with_head
 
         self.encoder1 = nn.Conv2d(23, 64, 3, stride=1, padding=1)
         self.encoder2 = nn.Conv2d(64, 128, 3, stride=1, padding=1)
@@ -247,6 +248,13 @@ class UNext(nn.Module):
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
 
         self.soft = nn.Softmax(dim=1)
+
+        if self.with_head:
+            self.head_in_ch = 32
+            self.observed_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.occluded_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dx_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dy_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
 
     def forward(self, x):
 
@@ -320,8 +328,30 @@ class UNext(nn.Module):
         out = F.relu(F.interpolate(self.decoder5(out),
                      scale_factor=(2, 2), mode='bilinear'))
 
-        return self.final(out)
+        out = self.final(out)
 
+        if self.with_head:      
+            out1 = self.observed_head(out)
+            out2 = self.occluded_head(out)
+            out3 = self.flow_dx_head(out)
+            out4 = self.flow_dy_head(out)
+
+            out = torch.cat([out1, out2, out3, out4], dim=1)
+
+        return out
+
+class sepHead(nn.Module):
+    def __init__(self,ch_in,ch_out):
+        super(sepHead,self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(ch_in, ch_out, kernel_size=1,stride=1,bias=True),
+            nn.BatchNorm2d(ch_out),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(ch_out, ch_out, kernel_size=1,stride=1,bias=True),
+        )
+    def forward(self,x):
+        x = self.conv(x)
+        return x 
 
 class UNext_S(nn.Module):
 
@@ -464,8 +494,8 @@ class UNext_S(nn.Module):
 
 
 def main():
-    model = UNext(num_classes=32).to("cuda:0")
-
+    model = UNext(num_classes=32, with_head=True).to("cuda:0")
+    print(model)
     for i in range(10):
         inputs = torch.rand((1, 23, 256, 256)).to("cuda:0")
         t = time.time()
@@ -477,24 +507,24 @@ def main():
         print("inf time =", time.time() - t)
     print(output.shape)
 
-    try:
-        import onnx
-        x = torch.rand((1, 23, 256, 256)).to("cuda:0")
-        torch.onnx.export(
-            model,
-            x,
-            "UNext.onnx",
-            export_params=True,
-            opset_version=11,
-            do_constant_folding=False,
-            input_names=['input'],
-            output_names=['output'])
+    # try:
+    #     import onnx
+    #     x = torch.rand((1, 23, 256, 256)).to("cuda:0")
+    #     torch.onnx.export(
+    #         model,
+    #         x,
+    #         "UNext.onnx",
+    #         export_params=True,
+    #         opset_version=11,
+    #         do_constant_folding=False,
+    #         input_names=['input'],
+    #         output_names=['output'])
 
-        onnx_model = onnx.load("UNext.onnx")
-        model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
-        onnx.save(model_with_shapes, "UNext_with_shapes.onnx")
-    except:
-        print("Install ONNX to convert the model!")
+    #     onnx_model = onnx.load("UNext.onnx")
+    #     model_with_shapes = onnx.shape_inference.infer_shapes(onnx_model)
+    #     onnx.save(model_with_shapes, "UNext_with_shapes.onnx")
+    # except:
+    #     print("Install ONNX to convert the model!")
 
 
 if __name__ == "__main__":
