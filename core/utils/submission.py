@@ -21,7 +21,7 @@ DEVICE = 'cuda:0'
 CONFIG = occupancy_flow_metrics_pb2.OccupancyFlowTaskConfig()
 text_format.Parse(open('./configs/config.txt').read(), CONFIG)
 
-def run_model_on_inputs(model, inputs):
+def run_model_on_inputs(model, inputs, iter=None):
 
     """Preprocesses inputs and runs model on one batch."""
 
@@ -97,7 +97,7 @@ def generate_predictions_for_one_test_shard(
         if inputs['scenario/id'] in test_scenario_ids:
             # print(f'Processing test shard {shard_message}, example {i}...')
             # Run inference.
-            pred_waypoint_logits = run_model_on_inputs(model=model, inputs=inputs)
+            pred_waypoint_logits = run_model_on_inputs(model=model, inputs=inputs, iter=i)
             pred_waypoints = apply_sigmoid_to_occupancy_logits(pred_waypoint_logits)
 
             # Make new scenario prediction message.

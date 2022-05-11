@@ -58,7 +58,7 @@ def _sigmoid_xe_loss(true_occupancy, pred_occupancy, loss_weight: float = 1000):
     return xe_sum #loss_weight * xe_sum / list(torch.flatten(pred_occupancy).size())[0] # torch.shape(pred_occupancy, out_type=torch.float32)   
 
 
-def _flow_loss(true_flow, pred_flow, loss_weight: float = 1):
+def _flow_loss(true_flow, pred_flow, loss_weight: float = 2):
     """Computes L1 flow loss."""
     diff = true_flow - pred_flow
     # Ignore predictions in areas where ground-truth flow is zero.
