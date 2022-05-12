@@ -26,6 +26,7 @@ from core.models.unet_nest import R2AttU_Net
 from core.models.sastangen import SASTANGen
 from core.models.unext import UNext
 from core.models.rnn import Standard_RNN
+from core.models.unet_lstm_flow import UNet_LSTM_Flow
 
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
@@ -77,7 +78,8 @@ def train(gpu, args):
     # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
     # model = SASTANGen(n_channels=3, output_channels=32).cuda(gpu)
-    model = Standard_RNN(is_training=True, device=device).cuda(gpu)
+    # model = Standard_RNN(is_training=True, device=device).cuda(gpu)
+    model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
@@ -140,7 +142,7 @@ def train(gpu, args):
                 # for key in true_waypoints["vehicles"].keys():
                 #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
                 optimizer.zero_grad()
-                model_outputs = model(grids, j)
+                model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)
 
                 loss_dict = Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits) 
