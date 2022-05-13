@@ -27,6 +27,7 @@ from core.models.sastangen import SASTANGen
 from core.models.unext import UNext
 from core.models.rnn import Standard_RNN
 from core.models.unet_lstm_flow import UNet_LSTM_Flow
+from core.models.conv_rnn import ConvGRU
 
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
@@ -79,7 +80,8 @@ def train(gpu, args):
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
     # model = SASTANGen(n_channels=3, output_channels=32).cuda(gpu)
     # model = Standard_RNN(is_training=True, device=device).cuda(gpu)
-    model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
+    # model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
+    model = ConvGRU(2, 3, 32, 3, return_sequence=False).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
