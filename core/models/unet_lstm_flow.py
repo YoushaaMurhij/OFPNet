@@ -3,8 +3,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models.optical_flow import raft_large
-from torchvision.utils import flow_to_image
+from torchvision.models.optical_flow import raft_small
 
 
 class DoubleConv(nn.Module):
@@ -306,7 +305,7 @@ class UNet_LSTM_Flow(nn.Module):
         self.up3 = Up(192, 64, bilinear)
         self.outc = OutConv(64, n_classes)
 
-        self.flow_model = raft_large(pretrained=True, progress=False)
+        self.flow_model = raft_small(pretrained=True, progress=False)
         # self.flow_model.requires_grad_(False)
 
 
@@ -354,11 +353,12 @@ class UNet_LSTM_Flow(nn.Module):
                 merged.append(torch.stack([occupancies[i][0][j], occupancies[i][0][j+ 8], torch.max(occupancies[i][0][j], occupancies[i][0][j + 8])]))
             megred_occupancies = torch.stack(merged)
             megred_occupancies = torch.unsqueeze(megred_occupancies, dim=1)
-            flow_imgs = []
-            for j in range(1, 9):
-                list_of_flows = self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])
-                predicted_flows = list_of_flows[-1]
-                flow_imgs.append(predicted_flows)
+            # flow_imgs = []
+            # for j in range(1, 9):
+            #     list_of_flows = self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])
+            #     predicted_flows = list_of_flows[-1]
+            #     flow_imgs.append(predicted_flows)
+            flow_imgs = [self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])[-1] for j in range(1,9) ]
             flows = torch.stack(flow_imgs)
             flows = torch.squeeze(flows, dim=1)
             flows = torch.reshape(flows,(16, 256, 256))
@@ -373,8 +373,8 @@ class UNet_LSTM_Flow(nn.Module):
 def main():
     model = UNet_LSTM_Flow(n_channels=23, n_classes=18).to("cuda:0")
 
-    for i in range(4):
-        inputs = torch.rand((2, 23, 256, 256)).to("cuda:0")
+    for i in range(20):
+        inputs = torch.rand((3, 23, 256, 256)).to("cuda:0")
         t = time.time()
         torch.cuda.synchronize()
         output = model(inputs)
