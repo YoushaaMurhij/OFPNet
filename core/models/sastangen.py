@@ -3,8 +3,8 @@ from torch.autograd import Variable
 import torch
 from torch.nn import init
 ########################################################################
-def get_gru_initial_state(num_samples, opt):
-    return Variable(torch.FloatTensor(num_samples, opt.gru_dim).normal_())  # m
+def get_gru_initial_state(num_samples, gru_dim):
+    return Variable(torch.FloatTensor(num_samples, gru_dim).normal_())  # m
 
 class FReLU(nn.Module):
     def __init__(self, in_c, k=3, s=1, p=1):
@@ -74,14 +74,19 @@ class ConvLSTMCell(nn.Module):
 
 
 class Seq2seqGRU(nn.Module):
-    def __init__(self, opt):
-        self.opt = opt
-        z_dim = opt.z_dim
-        self.conv = int(opt.image_size/16)
+    def __init__(self, z_dim=100, image_size=256, n_channels=23, gru_dim=128, T=1, out_channels=32, gpu=0):
+        self.z_dim = z_dim
+        self.image_size = image_size
+        self.n_channels = n_channels
+        self.gru_dim = gru_dim
+        self.T = T
+        self.gpu = gpu
+        self.out_channels = out_channels
+        self.conv = int(self.image_size/16)
         super(Seq2seqGRU, self).__init__()
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(opt.n_channels, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(self.n_channels, 32, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(True),
 
@@ -103,12 +108,12 @@ class Seq2seqGRU(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(512 * self.conv * self.conv, z_dim),
+            nn.Linear(512 * self.conv * self.conv, self.z_dim),
             # nn.ReLU(True),
         )
 
         self.fc3 = nn.Sequential(
-            nn.Linear(opt.gru_dim, 512 * self.conv * self.conv),
+            nn.Linear(self.gru_dim, 512 * self.conv * self.conv),
             # nn.ReLU(True),
         )
 
@@ -129,30 +134,30 @@ class Seq2seqGRU(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(True),
 
-            nn.Conv2d(32, opt.n_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(32, self.out_channels, kernel_size=1, stride=1, padding=0, bias=False),
             # nn.BatchNorm2d(32),
             nn.Tanh(),
         )
 
         self.fc2 = nn.Sequential(
-            nn.Linear(opt.gru_dim, z_dim),
+            nn.Linear(self.gru_dim, self.z_dim),
             nn.ReLU(True),
         )
 
-        self.gru = nn.GRU(z_dim, opt.gru_dim, batch_first=True)
+        self.gru = nn.GRU(self.z_dim, self.gru_dim, batch_first=True)
         # self.grucelldecoder = nn.GRU(z_dim,ngru)
 
     def forward(self, x):
         bs = x.size(0)
-        feature = self.encoder(x.reshape(bs * self.opt.T, self.opt.n_channels, self.opt.image_size, self.opt.image_size))
-        z = self.fc1(feature.reshape(bs * self.opt.T, -1))
-        z_ = z.reshape(bs, self.opt.T, self.opt.z_dim)
-        h = get_gru_initial_state(bs, self.opt).unsqueeze(0).cuda()
+        feature = self.encoder(x.reshape(bs * self.T, self.n_channels, self.image_size, self.image_size))
+        z = self.fc1(feature.reshape(bs * self.T, -1))
+        z_ = z.reshape(bs, self.T, self.z_dim)
+        h = get_gru_initial_state(bs, self.gru_dim).unsqueeze(0).to(self.gpu)
         o, _ = self.gru(z_, h)
 
         o = self.fc3(o[:,-1])
 
-        xhat = (self.decoder(o.reshape(bs, 512, self.conv, self.conv)).reshape(bs, self.opt.n_channels, self.opt.image_size, self.opt.image_size))
+        xhat = self.decoder(o.reshape(bs, 512, self.conv, self.conv)).reshape(bs, self.out_channels, self.image_size, self.image_size)
 
         return xhat
 
@@ -305,10 +310,11 @@ class SASTANGen(nn.Module):
 
 import time
 def main():
-    model = SASTANGen(n_channels=3, output_channels=32).to("cuda:0")
+    # model = SASTANGen(n_channels=3, output_channels=32).to("cuda:0")
+    model = Seq2seqGRU(n_channels=23, out_channels=32, gpu='cuda:0').to("cuda:0")
     # print(model)
     for i in range(10):
-        inputs = torch.rand((6, 23, 256, 256)).to("cuda:0")
+        inputs = torch.rand((16, 23, 256, 256)).to("cuda:0")
         t = time.time()
         torch.cuda.synchronize()
         output = model(inputs)

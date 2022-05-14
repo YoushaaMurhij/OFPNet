@@ -23,7 +23,7 @@ from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_head import R2AttU_sepHead
 from core.models.unet_lstm import UNet_LSTM
 from core.models.unet_nest import R2AttU_Net
-from core.models.sastangen import SASTANGen
+from core.models.sastangen import SASTANGen, Seq2seqGRU
 from core.models.unext import UNext
 from core.models.rnn import Standard_RNN
 from core.models.unet_lstm_flow import UNet_LSTM_Flow
@@ -81,9 +81,10 @@ def train(gpu, args):
     # model = SASTANGen(n_channels=3, output_channels=32).cuda(gpu)
     # model = Standard_RNN(is_training=True, device=device).cuda(gpu)
     # model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
-    model = ConvGRU(2, 3, 32, 3, return_sequence=False).cuda(gpu)
+    # model = ConvGRU(2, 3, 32, 3, return_sequence=False).cuda(gpu)
+    model = Seq2seqGRU(n_channels=23, out_channels=32, gpu=device).cuda(gpu)
 
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=True)
     print("Model structure: ")
     print(model)
 
@@ -183,7 +184,8 @@ def train(gpu, args):
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
             }, CKPT_DIR)
-
+        
+    wandb.finish()
     print('Finished Training. Model Saved!')
 
 if __name__=="__main__":

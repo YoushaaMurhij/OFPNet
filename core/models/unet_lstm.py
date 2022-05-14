@@ -316,7 +316,7 @@ class UNet_LSTM(nn.Module):
             self.flow_dy_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
 
     def forward(self, input):
-        road_graph = input[:, 0, :, :]
+        
         if self.sequence:
             batch_seq = []
             for batch in range(input.size(0)):
