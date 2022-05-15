@@ -1,3 +1,4 @@
+from pickle import FALSE
 import sqlite3
 import time
 import torch
@@ -284,13 +285,14 @@ class ConvLSTM(nn. Module):
 
 
 class UNet_LSTM_Flow(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+    def __init__(self, n_channels, n_classes, bilinear=True, with_head=True, flow_output=False ):
         super(UNet_LSTM_Flow, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-
-        self.T = 3
+        self.with_head = with_head
+        self.flow_output = flow_output
+        self.T = 8
 
         self.inc = DoubleConv(n_channels, 64)
         self.down1 = Down(64, 128)
@@ -306,13 +308,38 @@ class UNet_LSTM_Flow(nn.Module):
         self.outc = OutConv(64, n_classes)
 
         self.flow_model = raft_small(pretrained=True, progress=False)
-        # self.flow_model.requires_grad_(False)
+        for p in self.flow_model.parameters():
+            p.requires_grad = False
 
-
+        if self.with_head:
+            self.head_in_ch = 32
+            self.observed_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.occluded_head = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dx_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
+            self.flow_dy_head  = sepHead(ch_in=self.head_in_ch, ch_out=8)
+        
     def forward(self, input):
         
-        input = torch.unsqueeze(input, dim=1)
+        batch_seq = []
+        for batch in range(input.size(0)):
+            road_graph = input[batch, 0, None, :, :]
+            seq = []
+            for i in range(1, 11):
+                seq.append(torch.concat(
+                    (road_graph, input[batch, i, None, :, :], input[batch, 11 + i, None, :, :]), dim=0))  
+            seq.append(torch.concat(
+                (road_graph, input[batch, 11, None, :, :], input[batch, 22, None, :, :]), dim=0))
 
+            x = torch.stack(seq)
+            x = torch.unsqueeze(x, dim=1)
+            flow_imgs = [self.flow_model(x[i - 1], x[i])[-1] for i in range(1,11)]
+            flow_imgs.append(flow_imgs[-1])
+            flows = torch.stack(flow_imgs)
+            res = torch.cat((x, flows), dim=2)
+            batch_seq.append(res)
+
+        input = torch.stack(batch_seq)
+        input = torch.squeeze(input, dim=2)
         b, _, _, _, _ = input.shape
 
         x1, x2, x3, x4 = [], [], [], []
@@ -345,36 +372,57 @@ class UNet_LSTM_Flow(nn.Module):
             logits.append(self.outc(x))
         occupancies = torch.stack(logits)
         # occupancies = torch.squeeze(occupancies, dim=1)
+        occupancies = torch.reshape(occupancies, (-1, 32, 256, 256))
 
-        result = []
-        for i in range(b):
-            merged = []
-            for j in range(9):
-                merged.append(torch.stack([occupancies[i][0][j], occupancies[i][0][j+ 8], torch.max(occupancies[i][0][j], occupancies[i][0][j + 8])]))
-            megred_occupancies = torch.stack(merged)
-            megred_occupancies = torch.unsqueeze(megred_occupancies, dim=1)
-            # flow_imgs = []
-            # for j in range(1, 9):
-            #     list_of_flows = self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])
-            #     predicted_flows = list_of_flows[-1]
-            #     flow_imgs.append(predicted_flows)
-            flow_imgs = [self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])[-1] for j in range(1,9) ]
-            flows = torch.stack(flow_imgs)
-            flows = torch.squeeze(flows, dim=1)
-            flows = torch.reshape(flows,(16, 256, 256))
-            res = torch.cat((occupancies[i][0][:16], flows),)
-            result.append(res)
-        # res = torch.squeeze(occupancies, dim=1)
-        
-        return torch.stack(result)
+        if self.flow_output:
+            result = []
+            for i in range(b):
+                merged = []
+                for j in range(9):
+                    merged.append(torch.stack([occupancies[i][0][j], occupancies[i][0][j+ 8], torch.max(occupancies[i][0][j], occupancies[i][0][j + 8])]))
+                megred_occupancies = torch.stack(merged)
+                megred_occupancies = torch.unsqueeze(megred_occupancies, dim=1)
+                flow_imgs = [self.flow_model(megred_occupancies[j - 1], megred_occupancies[j])[-1] for j in range(1,9) ]
+                flows = torch.stack(flow_imgs)
+                flows = torch.squeeze(flows, dim=1)
+                flows = torch.reshape(flows,(16, 256, 256))
+                res = torch.cat((occupancies[i][0][:16], flows),)
+                result.append(res)
+            # res = torch.squeeze(occupancies, dim=1)
+            
+            logits = torch.stack(result)
 
+        if self.with_head:      
+            out1 = self.observed_head(occupancies)
+            out2 = self.occluded_head(occupancies)
+            out3 = self.flow_dx_head(occupancies)
+            out4 = self.flow_dy_head(occupancies)
+
+            logits = torch.cat([out1, out2, out3, out4], dim=1)
+            
+        return logits
+
+
+class sepHead(nn.Module):
+    def __init__(self,ch_in,ch_out):
+        super(sepHead,self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(ch_in, ch_out, kernel_size=1,stride=1,bias=True),
+            nn.BatchNorm2d(ch_out),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(ch_out, ch_out, kernel_size=1,stride=1,bias=True),
+        )
+    def forward(self,x):
+        x = self.conv(x)
+        return x 
 
 
 def main():
-    model = UNet_LSTM_Flow(n_channels=23, n_classes=18).to("cuda:0")
+    model = UNet_LSTM_Flow(n_channels=5, n_classes=4, with_head=True, flow_output=False).to("cuda:0")
+    # model = UNet_LSTM_Flow(n_channels=23, n_classes=18, with_head=FALSE, flow_output=True).to("cuda:0")
 
     for i in range(20):
-        inputs = torch.rand((3, 23, 256, 256)).to("cuda:0")
+        inputs = torch.rand((2, 23, 256, 256)).to("cuda:0")
         t = time.time()
         torch.cuda.synchronize()
         output = model(inputs)

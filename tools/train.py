@@ -23,9 +23,8 @@ from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_head import R2AttU_sepHead
 from core.models.unet_lstm import UNet_LSTM
 from core.models.unet_nest import R2AttU_Net
-from core.models.sastangen import SASTANGen, Seq2seqGRU
+from core.models.sastangen import  Seq2seqGRU
 from core.models.unext import UNext
-from core.models.rnn import Standard_RNN
 from core.models.unet_lstm_flow import UNet_LSTM_Flow
 from core.models.conv_rnn import ConvGRU
 
@@ -78,13 +77,12 @@ def train(gpu, args):
     # model = UNet_LSTM(n_channels=3, n_classes=4, sequence=True).cuda(gpu)
     # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
-    # model = SASTANGen(n_channels=3, output_channels=32).cuda(gpu)
-    # model = Standard_RNN(is_training=True, device=device).cuda(gpu)
     # model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
     # model = ConvGRU(2, 3, 32, 3, return_sequence=False).cuda(gpu)
-    model = Seq2seqGRU(n_channels=23, out_channels=32, gpu=device).cuda(gpu)
+    # model = Seq2seqGRU(n_channels=23, out_channels=32, gpu=device).cuda(gpu)
+    model = UNet_LSTM_Flow(n_channels=5, n_classes=4, with_head=True, flow_output=False).cuda(gpu)
 
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=True)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
     print(model)
 
