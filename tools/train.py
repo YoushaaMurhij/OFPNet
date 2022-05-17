@@ -71,15 +71,9 @@ def train(gpu, args):
 
     torch.cuda.set_device(gpu)
     device = 'cuda:' + str(gpu)
-    # model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).cuda(gpu)
-    # model = UNext(num_classes=32).cuda(gpu)
     # model = UNext(num_classes=32, with_head=True).cuda(gpu)
-    # model = UNet_LSTM(n_channels=3, n_classes=4, sequence=True).cuda(gpu)
     # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
-    # model = UNet_LSTM_Flow(n_channels=23, n_classes=18).cuda(gpu)
-    # model = ConvGRU(2, 3, 32, 3, return_sequence=False).cuda(gpu)
-    # model = Seq2seqGRU(n_channels=23, out_channels=32, gpu=device).cuda(gpu)
     model = UNet_LSTM_Flow(n_channels=5, n_classes=4, with_head=True, flow_output=False).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
@@ -94,7 +88,7 @@ def train(gpu, args):
     if args.resume:
         checkpoint = torch.load(args.pretrained, map_location='cpu')
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.module.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
