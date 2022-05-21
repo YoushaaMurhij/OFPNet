@@ -38,7 +38,7 @@ def Occupancy_Flow_Loss(true_waypoints, pred_waypoint_logits):
         # Flow loss.
         pred_flow = pred_waypoint_logits['vehicles']['flow'][k]
         true_flow = true_waypoints['vehicles']['flow'][k]
-        loss_dict['flow'].append(_flow_loss(pred_flow, true_flow))
+        loss_dict['flow'].append((k + 1) * _flow_loss(pred_flow, true_flow))
 
     # Mean over waypoints.
     loss_dict['observed_xe'] = (sum(loss_dict['observed_xe']) / cfg.NUM_WAYPOINTS)
