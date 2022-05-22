@@ -2,11 +2,8 @@ import argparse
 from tqdm import tqdm
 import tensorflow as tf
 from core.utils.submission import *
-from core.models.unet_nest import R2AttU_Net
-from core.models.unet_head import R2AttU_sepHead
-from core.models.unet_seq import R2AttU_seq
-from core.models.xception import Xception
-from core.models.wnet import WNet
+from core.models.unet_lstm import UNet_LSTM
+from core.models.mfnet_3d import MFNET_3D
 
 from configs import hyperparameters
 cfg = hyperparameters.get_config()
@@ -21,18 +18,15 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Occupancy and Flow Prediction submission')
     parser.add_argument('--method', help='Unique method name', required=True)
     parser.add_argument("--description", help="Brief description of the method", required=True)
-    parser.add_argument("--pretrained" , default="pretrained/20220429_221529_R2AttU_T2/Epoch_4.pth", help="Use pre-trained models")
+    parser.add_argument("--pretrained" , default="pretrained/20220521_145830_MFNET_3D/Epoch_1_Iter_5073.pth", help="Use pre-trained models")
     parser.add_argument('--split', help='either validation or testing split', default='val')
     args = parser.parse_args()
     return args
 
 def main(args):
-
-    # model = R2AttU_sepHead(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=2, sliced_head=True).to(DEVICE)
-    model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=2).to(DEVICE)
-    # model = WNet(img_ch=cfg.INPUT_SIZE, output_ch=cfg.NUM_CLASSES, t=1).to(DEVICE)
-    # model = R2AttU_seq(img_ch=23, output_ch=32, t=1).to(DEVICE)
-    # model = Xception('xception71', in_channels=23, time_limit=8, n_traj=64, with_head=True).to(DEVICE)
+    # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=False, sequence=False).to(DEVICE)
+    # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).to(DEVICE)
+    model = MFNET_3D(pretrained=False,batch_size=cfg.VAL_BATCH_SIZE).to(DEVICE)
 
     checkpoint = torch.load(args.pretrained, map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])

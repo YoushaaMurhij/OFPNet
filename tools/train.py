@@ -21,8 +21,6 @@ import torch.multiprocessing as mp
 
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_lstm import UNet_LSTM
-from core.models.unext import UNext
-from core.models.unet_lstm_flow import UNet_LSTM_Flow
 from core.models.mfnet_3d import MFNET_3D
 
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
@@ -68,7 +66,6 @@ def train(gpu, args):
 
     torch.cuda.set_device(gpu)
     device = 'cuda:' + str(gpu)
-    # model = UNext(num_classes=32, with_head=True).cuda(gpu)
     # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
     # model = UNet_LSTM_Flow(n_channels=5, n_classes=4, with_head=True, flow_output=False).cuda(gpu)
@@ -132,8 +129,6 @@ def train(gpu, args):
                 grids = data['grids'] 
 
                 true_waypoints = data['waypoints']
-                # for key in true_waypoints["vehicles"].keys():
-                #     true_waypoints["vehicles"][key] = [wp.to(device) for wp in true_waypoints["vehicles"][key]]
                 optimizer.zero_grad()
                 model_outputs = model(grids)
                 pred_waypoint_logits = get_pred_waypoint_logits(model_outputs)

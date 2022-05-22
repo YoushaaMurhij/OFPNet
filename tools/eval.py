@@ -27,8 +27,7 @@ def main(args):
     PATH = os.path.join(args.save_dir, save_str)
     if not os.path.exists(PATH):
         os.makedirs(PATH, exist_ok=True)
-    # model = EfficientDetBackbone(compound_coef=1).to(DEVICE)
-    # model = mae_vit_large_patch16_dec512d8b().to(DEVICE)
+        
     model = R2AttU_Net(in_ch=cfg.INPUT_SIZE, out_ch=cfg.NUM_CLASSES, t=6).to(DEVICE)
     checkpoint = torch.load(args.ckpt, map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])
