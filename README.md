@@ -1,4 +1,6 @@
 # OFPNet
+
+![workflow](https://github.com/YoushaaMurhij/OFPNet/actions/workflows/main.yml/badge.svg) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) <br>
 **OFPNet** (Occupancy and flow predictive network) is developed for end-to-end prediction of occupancy map and flow
 using reccurent blocks, additional convolutional heads, etc. <br>
 
