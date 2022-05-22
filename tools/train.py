@@ -24,7 +24,6 @@ from core.models.unet_lstm import UNet_LSTM
 from core.models.mfnet_3d import MFNET_3D
 from core.models.motionnet import MotionNet
 
-
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
 from configs import hyperparameters

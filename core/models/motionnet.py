@@ -246,12 +246,12 @@ class MotionNet(nn.Module):
             # x = torch.unsqueeze(x, dim=0)
             batch_seq.append(x)
 
-        bevs = torch.stack(batch_seq)
+        x = torch.stack(batch_seq)
 
         # bevs = x.permute(0, 1, 4, 2, 3)  # (Batch, seq, z, h, w)
 
         # Backbone network
-        x = self.stpn(bevs)
+        x = self.stpn(x)
 
         # Cell Classification head
         cell_class_pred = self.cell_classify(x)
@@ -265,7 +265,7 @@ class MotionNet(nn.Module):
 
         disp = disp.view(Batch, -1, x.size(-2), x.size(-1))
 
-        occpupancy = out = torch.cat([cell_class_pred, state_class_pred], dim=1)
+        occpupancy = torch.cat([cell_class_pred, state_class_pred], dim=1)
 
         out1 = self.observed_head(occpupancy)
         out2 = self.occluded_head(occpupancy)
