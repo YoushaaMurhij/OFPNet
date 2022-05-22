@@ -20,13 +20,13 @@ docker run -it -d --rm \
     --shm-size="40g" \
     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
     --name ofp \
-    -v $workspace_dir/:/home/workspace/Occ_Flow_Pred:rw \
-    -v ${dataset_dir}:/home/workspace/Occ_Flow_Pred/data/Waymo_Motion:rw \
+    -v $workspace_dir/:/home/workspace/OFPNet:rw \
+    -v ${dataset_dir}:/home/workspace/OFPNet/data/Waymo_Motion:rw \
     x64/ofp:latest
 
 docker exec -it ofp /bin/bash -c \
-    "export PYTHONPATH=\"${PYTHONPATH}:/home/workspace/Occ_Flow_Pred\";
-    cd /home/workspace/Occ_Flow_Pred;
+    "export PYTHONPATH=\"${PYTHONPATH}:/home/workspace/OFPNet\";
+    cd /home/workspace/OFPNet;
     nvidia-smi;"
 
 
