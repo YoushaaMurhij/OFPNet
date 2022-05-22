@@ -45,11 +45,11 @@ def get_config():
     # Optimization:            
     cfg.OPTIMIZER                    = 'adamw'
     cfg.SCHEDULER                    = 'CosineAnnealingLR' # 'CosineAnnealingLR' , GetInitLR, ReduceLROnPlateau, CosineAnnealingWarmRestarts
-    cfg.TRAIN_BATCH_SIZE             = 6
+    cfg.TRAIN_BATCH_SIZE             = 8
     cfg.VAL_BATCH_SIZE               = 1
     cfg.WEIGHT_DECAY                 = 0.007
     cfg.EPOCHS                       = 5
-    cfg.LR                           = 0.001
+    cfg.LR                           = 0.0005
     cfg.MOMENTUM                     = 0.8
 
     # Grid sequence parameters:

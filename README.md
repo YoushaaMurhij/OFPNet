@@ -57,5 +57,5 @@ Feel free to open an issue or a pull-request :relaxed: <br>
 
 ## Contacts:
 
-Youshaa Murhij  :mailbox_with_mail: yosha[dot]morheg[at]phystech[dot]edu 
-Dmitry Yudin    :mailbox_with_mail: yudin[dot]da[at]mipt[dot]ru          
+Youshaa Murhij  :mailbox_with_mail: yosha[dot]morheg[at]phystech[dot]edu <br>
+Dmitry Yudin    :mailbox_with_mail: yudin[dot]da[at]mipt[dot]ru          <br>

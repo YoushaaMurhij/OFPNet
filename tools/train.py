@@ -22,6 +22,8 @@ import torch.multiprocessing as mp
 from core.datasets.dataset import WaymoOccupancyFlowDataset
 from core.models.unet_lstm import UNet_LSTM
 from core.models.mfnet_3d import MFNET_3D
+from core.models.motionnet import MotionNet
+
 
 from core.losses.occupancy_flow_loss import Occupancy_Flow_Loss
 from core.utils.io import get_pred_waypoint_logits
@@ -69,7 +71,8 @@ def train(gpu, args):
     # model = UNet_LSTM(n_channels=23, n_classes=32, with_head=True, sequence=False).cuda(gpu)
     # model = UNet_LSTM(n_channels=3, n_classes=4, with_head=True, sequence=True).cuda(gpu)
     # model = UNet_LSTM_Flow(n_channels=5, n_classes=4, with_head=True, flow_output=False).cuda(gpu)
-    model = MFNET_3D(pretrained=False,batch_size=cfg.TRAIN_BATCH_SIZE).cuda(gpu)
+    # model = MFNET_3D(pretrained=False,batch_size=cfg.TRAIN_BATCH_SIZE).cuda(gpu)
+    model = MotionNet(out_seq_len=8).cuda(gpu)
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=False)
     print("Model structure: ")
